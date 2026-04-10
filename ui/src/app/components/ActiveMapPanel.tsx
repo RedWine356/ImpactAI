@@ -121,7 +121,7 @@ export function ActiveMapPanel() {
   const containerRef = useRef<HTMLDivElement>(null);
   const renderedLayersRef = useRef<number>(0);
   const prevLayerCountRef = useRef<number>(0);
-  const { mapLayers } = useNagorMind();
+  const { mapLayers, messages } = useNagorMind();
 
   // Init map
   useEffect(() => {

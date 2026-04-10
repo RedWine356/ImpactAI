@@ -47,9 +47,9 @@ export function WelcomePanel() {
           </span>
           <span
             className="px-[7px] py-[2px] rounded-full text-[10px]"
-            style={{ background: 'rgba(255,255,255,0.12)', color: '#B0B0B0', fontWeight: 500 }}
+            style={{ background: 'rgba(0,212,255,0.15)', color: '#00d4ff', fontWeight: 600 }}
           >
-            v2
+            v2.1 · LangChain
           </span>
         </div>
         <button className="p-1.5 rounded-lg transition-colors" style={{ color: '#666666' }}
@@ -128,8 +128,35 @@ export function WelcomePanel() {
           ))}
         </div>
 
-        <p className="text-[12px] mt-6" style={{ color: '#666666' }}>
-          Powered by Gemini 2.5 Flash · 13 specialized urban analysis tools
+        {/* Tech Stack Badges */}
+        <div className="flex flex-wrap items-center justify-center gap-2 mt-6">
+          <span
+            className="px-2.5 py-1 rounded-full text-[10px] tracking-wide"
+            style={{ background: 'rgba(0,212,255,0.1)', border: '1px solid rgba(0,212,255,0.3)', color: '#00d4ff', fontWeight: 600 }}
+          >
+            LangChain Agent
+          </span>
+          <span
+            className="px-2.5 py-1 rounded-full text-[10px] tracking-wide"
+            style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)', color: '#a855f7', fontWeight: 600 }}
+          >
+            Groq LLM
+          </span>
+          <span
+            className="px-2.5 py-1 rounded-full text-[10px] tracking-wide"
+            style={{ background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)', color: '#4ade80', fontWeight: 600 }}
+          >
+            13 AI Tools
+          </span>
+          <span
+            className="px-2.5 py-1 rounded-full text-[10px] tracking-wide"
+            style={{ background: 'rgba(251,146,60,0.1)', border: '1px solid rgba(251,146,60,0.3)', color: '#fb923c', fontWeight: 600 }}
+          >
+            RAG Pipeline
+          </span>
+        </div>
+        <p className="text-[11px] mt-2" style={{ color: '#555555' }}>
+          Powered by LangChain AgentExecutor + ChatGroq (Llama 3.3 70B)
         </p>
       </div>
 

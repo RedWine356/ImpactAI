@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Brain, Settings, ArrowUp, Wifi, WifiOff } from 'lucide-react';
+import { Brain, Settings, ArrowUp, Wifi, WifiOff, Zap } from 'lucide-react';
 import { ToolBadge, ResultLine } from './ToolBadge';
 import { useNagorMind, type ChatEntry } from '../NagorMindContext';
 
@@ -122,7 +122,17 @@ function AssistantMessage({ entry }: { entry: ChatEntry }) {
         )}
 
         {entry.reasoning && (
-          <p className="text-[13px] italic" style={{ color: '#B0B0B0' }}>🔍 {entry.reasoning}</p>
+          <div className="flex items-start gap-2">
+            <span
+              className="shrink-0 mt-0.5 inline-flex items-center gap-1 px-2 py-[2px] rounded-full text-[9px]"
+              style={{ background: 'rgba(0,212,255,0.1)', border: '1px solid rgba(0,212,255,0.25)', color: '#00d4ff', fontWeight: 600 }}
+            >
+              <Zap size={9} /> CHAIN
+            </span>
+            <p className="text-[13px] italic" style={{ color: '#B0B0B0' }}>
+              {entry.reasoning}
+            </p>
+          </div>
         )}
 
         {(entry.toolCalls || []).map((tc, i) => {
@@ -205,6 +215,33 @@ function AssistantMessage({ entry }: { entry: ChatEntry }) {
             </div>
           </>
         )}
+
+        {/* LangChain metadata footer */}
+        {!entry.isStreaming && entry.metadata?.framework === 'langchain' && (
+          <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <span
+              className="inline-flex items-center gap-1 px-2 py-[2px] rounded-full text-[9px]"
+              style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)', color: '#00d4ff', fontWeight: 600 }}
+            >
+              <Zap size={8} /> LangChain
+            </span>
+            {entry.metadata.model && (
+              <span className="text-[9px]" style={{ color: '#555' }}>
+                {entry.metadata.model}
+              </span>
+            )}
+            {entry.metadata.tools_used && entry.metadata.tools_used.length > 0 && (
+              <span className="text-[9px]" style={{ color: '#555' }}>
+                · {entry.metadata.tools_used.length} tools
+              </span>
+            )}
+            {entry.metadata.total_duration_ms && (
+              <span className="text-[9px]" style={{ color: '#555' }}>
+                · {(entry.metadata.total_duration_ms / 1000).toFixed(1)}s
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -253,6 +290,12 @@ export function AccountabilityChatPanel() {
           </div>
           <span className="text-[18px] text-white tracking-[-0.02em]" style={{ fontWeight: 700 }}>
             NagorMind
+          </span>
+          <span
+            className="px-[7px] py-[2px] rounded-full text-[10px]"
+            style={{ background: 'rgba(0,212,255,0.15)', color: '#00d4ff', fontWeight: 600 }}
+          >
+            v2.1 · LangChain
           </span>
           <span
             className="px-[7px] py-[2px] rounded-full text-[10px]"

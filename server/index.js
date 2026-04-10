@@ -7,6 +7,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { initCache } from './cache.js';
 import { handleQuery } from './agent.js';
+import { handleChatREST } from './langchain-agent.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -50,15 +51,42 @@ const startTime = Date.now();
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    version: '2.0.0',
+    version: '2.1.0',
     uptime_seconds: Math.floor((Date.now() - startTime) / 1000),
+    framework: {
+      name: 'LangChain',
+      agent: 'AgentExecutor + createToolCallingAgent',
+      llm: 'ChatGroq (llama-3.3-70b-versatile)',
+      tools: 13,
+      memory: 'ConversationBufferMemory (in-session)',
+    },
     services: {
       groq: process.env.GROQ_API_KEY ? 'configured' : 'missing_key',
+      langchain: 'active',
       overpass: 'available',
       waqi: process.env.WAQI_TOKEN ? 'configured' : 'missing_key',
       openweathermap: process.env.OWM_API_KEY ? 'configured' : 'missing_key',
     },
   });
+});
+
+// ─── REST Chat Endpoint (for curl/testing) ───
+app.post('/api/chat', async (req, res) => {
+  const { query, history } = req.body || {};
+  if (!query || typeof query !== 'string') {
+    return res.status(400).json({ error: 'Missing "query" field in request body' });
+  }
+
+  try {
+    const result = await handleChatREST(query, history || []);
+    res.json(result);
+  } catch (err) {
+    console.error('[REST /api/chat] Error:', err);
+    res.status(500).json({
+      error: err.message || 'Internal server error',
+      framework: 'langchain',
+    });
+  }
 });
 
 app.get('/api/data/thanas', (req, res) => {
@@ -175,17 +203,23 @@ await initCache(process.env.REDIS_URL || null);
 
 server.listen(PORT, () => {
   console.log(`
-╔══════════════════════════════════════════╗
-║   NagorMind Backend v2.0                 ║
-║   http://localhost:${PORT}                  ║
-║   WebSocket: ws://localhost:${PORT}/ws      ║
-║                                          ║
-║   REST:                                  ║
-║     GET /api/health                      ║
-║     GET /api/data/thanas                 ║
-║     GET /api/data/standards              ║
-║     GET /api/data/projects               ║
-╚══════════════════════════════════════════╝
+╔═══════════════════════════════════════════════╗
+║   NagorMind Backend v2.1 (LangChain Agent)    ║
+║   http://localhost:${PORT}                       ║
+║   WebSocket: ws://localhost:${PORT}/ws           ║
+║                                               ║
+║   Framework: LangChain AgentExecutor          ║
+║   LLM:       ChatGroq (llama-3.3-70b)        ║
+║   Tools:     13 specialized urban analysis    ║
+║                                               ║
+║   REST:                                       ║
+║     GET  /api/health                          ║
+║     POST /api/chat   { "query": "..." }       ║
+║     GET  /api/data/thanas                     ║
+║     GET  /api/data/standards                  ║
+║     GET  /api/data/projects                   ║
+╚═══════════════════════════════════════════════╝
   `);
   console.log(`[Data] Loaded ${ALL_PROJECTS.length} projects, ${DATA.thanas.features.length} thanas`);
+  console.log(`[LangChain] Agent ready with 13 DynamicStructuredTools`);
 });

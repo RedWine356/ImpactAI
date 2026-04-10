@@ -1,11 +1,15 @@
 /**
- * Groq Agent — agentic loop with OpenAI-compatible tool calling
+ * Groq Agent — LangChain-powered agentic loop with fallback to direct API
+ *
+ * Primary: LangChain AgentExecutor with ChatGroq + DynamicStructuredTools
+ * Fallback: Direct Groq OpenAI-compatible tool calling (legacy)
  */
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { TOOLS, TOOL_DECLARATIONS } from './tools/index.js';
 import { setRenderSender } from './tools/render.js';
+import { handleQueryLangChain } from './langchain-agent.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SYSTEM_PROMPT = readFileSync(join(__dirname, 'prompts', 'system_prompt.txt'), 'utf-8');
@@ -488,6 +492,21 @@ export async function handleQuery(userText, session, send) {
     throw new Error('GROQ_API_KEY is not set');
   }
 
+  // ── PRIMARY PATH: LangChain Agent ──
+  try {
+    await handleQueryLangChain(userText, session, send);
+    return;
+  } catch (lcErr) {
+    console.error('[Agent] LangChain agent failed, falling back to legacy loop:', lcErr.message);
+    send({
+      type: 'reasoning',
+      text: 'Switching to legacy agent mode...',
+      step: 0,
+      total_steps: 0,
+    });
+  }
+
+  // ── FALLBACK: Legacy direct Groq API loop ──
   setRenderSender(send);
 
   const history = normalizeHistory(session.history).slice(-20);
@@ -497,11 +516,13 @@ export async function handleQuery(userText, session, send) {
     { role: 'user', content: userText },
   ];
 
-  session.history.push({ role: 'user', content: userText });
+  if (!session.history.some(h => h.role === 'user' && h.content === userText)) {
+    session.history.push({ role: 'user', content: userText });
+  }
 
   send({
     type: 'reasoning',
-    text: 'Analyzing your query...',
+    text: 'Analyzing your query (legacy mode)...',
     step: 0,
     total_steps: 0,
   });

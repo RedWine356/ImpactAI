@@ -38,11 +38,23 @@ export interface ReasoningMsg {
   total_steps: number;
 }
 
+export interface ResponseMetadata {
+  session_id?: string;
+  model?: string;
+  framework?: string;
+  agent_type?: string;
+  tools_used?: string[];
+  total_duration_ms?: number;
+  intermediate_steps?: number;
+  rounds?: number;
+  note?: string;
+}
+
 export interface ResponseMsg {
   type: 'response';
   text: string;
   done: boolean;
-  metadata?: Record<string, unknown>;
+  metadata?: ResponseMetadata;
 }
 
 export interface ErrorMsg {
@@ -104,6 +116,7 @@ export interface ChatEntry {
   isStreaming?: boolean;
   error?: string;
   timestamp: number;
+  metadata?: ResponseMetadata;
 }
 
 // ── Context ────────────────────────────────────────────────────────────────
@@ -304,7 +317,11 @@ export function NagorMindProvider({ children }: { children: ReactNode }) {
           setCurrentStep(0);
           setTotalSteps(0);
           if (currentAssistantRef.current) {
-            const final = { ...currentAssistantRef.current, isStreaming: false };
+            const final = {
+              ...currentAssistantRef.current,
+              isStreaming: false,
+              metadata: (msg as ResponseMsg).metadata || undefined,
+            };
             currentAssistantRef.current = null;
             setMessages((prev) => {
               const next = [...prev];
