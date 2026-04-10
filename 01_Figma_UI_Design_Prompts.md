@@ -1,532 +1,843 @@
-# NagorMind — Figma Make Prompts (Full UI Generation)
+# NagorMind — Figma Make Prompts (Interactive + Backend-Connected)
 
-> **Purpose**: Copy-paste these prompts into Figma's "Make Design" / AI features to generate each screen and component of NagorMind.  
-> **Design Language**: Dark mode, glassmorphism, data-dense urban planning dashboard.  
-> **Brand Colors**: Deep navy `#0a0f1e`, Electric cyan `#00d4ff`, Alert amber `#facc15`, Danger red `#ef4444`, Success green `#4ade80`
+> **Purpose**: Generate a fully interactive Figma prototype with proper page connections  
+> **Each prompt = 1 Figma page/frame**  
+> **Run prompts in the order listed** — later pages reference earlier components
 
 ---
 
-## Design Tokens (Reference for All Prompts)
+## Page Map — Which Prompt Renders Which Page
+
+```
+PROMPT → PAGE NAME IN FIGMA        → WHAT IT IS                    → BACKEND CONNECTION
+─────────────────────────────────────────────────────────────────────────────────────────
+  1    → "Main Dashboard"           → Full app (desktop, empty)     → WebSocket: ws://localhost:3000/ws
+  2    → "Dashboard - Active Chat"  → Full app with live chat       → WS: query, reasoning, tool_call, response
+  3    → "Dashboard - Map Flags"    → Full app with accountability  → WS: accountability_flags, map_render
+  4    → "Flag Popup - Detail"      → Popup overlay on map          → REST: GET /api/data/projects
+  5    → "Accountability Panel"     → Side panel overlay            → WS: accountability_flags
+  6    → "Mobile - Chat"            → Mobile view (chat tab)        → Same WebSocket as desktop
+  7    → "Mobile - Map"             → Mobile view (map tab)         → Same WebSocket as desktop
+```
+
+### Figma Prototype Flow
+
+```
+┌─────────────────┐     user types query      ┌──────────────────────┐
+│  1. Main        │ ──────────────────────────→│  2. Active Chat      │
+│  Dashboard      │                            │  (reasoning + map)   │
+│  (Empty/Welcome)│                            │                      │
+└─────────────────┘                            └──────┬───────────────┘
+                                                      │
+                        agent calls Tool 13           │
+                        (accountability check)        ▼
+                                               ┌──────────────────────┐
+                                               │  3. Dashboard with   │
+                                               │  Map Flags           │
+                                               └──────┬──────┬────────┘
+                                                      │      │
+                              click flag pin          │      │ click "🚩 Flags" button
+                                                      ▼      ▼
+                                          ┌───────────────┐ ┌────────────────┐
+                                          │ 4. Flag Popup │ │ 5. Account.    │
+                                          │ (overlay)     │ │ Panel (slide)  │
+                                          └───────────────┘ └────────────────┘
+```
+
+---
+
+## Design Tokens (Same for All Prompts)
 
 ```
 COLORS:
-  --bg-primary:       #0a0f1e    (deep navy, main background)
-  --bg-secondary:     #111827    (card/panel background)
-  --bg-glass:         rgba(17, 24, 39, 0.85) with backdrop-blur: 16px
-  --accent-primary:   #00d4ff    (electric cyan — buttons, links, active states)
-  --accent-secondary: #6366f1    (indigo — secondary actions)
-  --text-primary:     #f1f5f9    (off-white)
-  --text-secondary:   #94a3b8    (muted gray)
-  --text-muted:       #64748b    (very muted)
-  --success:          #4ade80    (green — low gap)
-  --warning:          #facc15    (yellow — moderate gap)
-  --danger-medium:    #fb923c    (orange — high gap)
-  --danger-high:      #ef4444    (red — very high gap)
+  --bg-primary:       #0a0f1e
+  --bg-secondary:     #111827
+  --bg-glass:         rgba(17, 24, 39, 0.85) + backdrop-blur: 16px
+  --accent-primary:   #00d4ff
+  --accent-secondary: #6366f1
+  --text-primary:     #f1f5f9
+  --text-secondary:   #94a3b8
+  --text-muted:       #64748b
+  --success:          #4ade80
+  --warning:          #facc15
+  --danger-medium:    #fb923c
+  --danger-high:      #ef4444
   --border:           rgba(255, 255, 255, 0.06)
-  --glow-cyan:        0 0 20px rgba(0, 212, 255, 0.15)
 
 TYPOGRAPHY:
-  --font-primary:     'Inter', sans-serif
-  --font-mono:        'JetBrains Mono', monospace
-  --heading-xl:       28px / 700 weight / -0.02em tracking
-  --heading-lg:       22px / 600 weight / -0.01em tracking
-  --body:             14px / 400 weight / 0em tracking
-  --caption:          12px / 400 weight / 0.01em tracking
-  --tool-badge:       11px / 500 weight / monospace
-
-SPACING:
-  --gap-xs:  4px
-  --gap-sm:  8px
-  --gap-md:  16px
-  --gap-lg:  24px
-  --gap-xl:  32px
-
-RADII:
-  --radius-sm:  6px
-  --radius-md:  12px
-  --radius-lg:  16px
-  --radius-full: 9999px
-
+  Font: 'Inter' for UI, 'JetBrains Mono' for code/tool badges
+  
 EFFECTS:
-  --shadow-card:    0 4px 24px rgba(0, 0, 0, 0.4)
-  --shadow-popup:   0 8px 32px rgba(0, 0, 0, 0.6)
-  --transition:     all 0.2s ease-out
+  Cards: backdrop-filter blur(16px), shadow 0 4px 24px rgba(0,0,0,0.4)
+  Transitions: all 0.2s ease-out
 ```
 
 ---
 
-## 1. MASTER LAYOUT — Main Dashboard
+## PROMPT 1 — Main Dashboard (Empty / Welcome State)
 
-### Figma Make Prompt:
+**Figma Page Name**: `Main Dashboard`  
+**This is**: The landing page when the app first loads. No messages yet.  
+**Backend**: Connects via `WebSocket ws://localhost:3000/ws` on page load.  
+**Next Page**: User types in input → navigate to **Prompt 2 (Active Chat)**
 
 ```
-Design a full-screen dark mode urban planning AI dashboard called "NagorMind". 
-The layout is a horizontal split screen:
+Design a full-screen dark mode AI urban planning dashboard called "NagorMind".
+Desktop viewport: 1440x900. No device frames.
 
-LEFT PANEL (40% width):
-- Top bar: App logo "NagorMind" with a brain/city icon in electric cyan (#00d4ff), 
-  subtitle "AI Urban Advisor for Dhaka" in muted gray (#94a3b8)
-- Below logo: a row of 3-4 suggested query chips with rounded pill shape, 
-  semi-transparent background, subtle cyan border. Example chips: 
-  "🚩 Accountability Check — Mirpur", "🏥 Healthcare gaps", "🌊 Flood risk", 
-  "📊 Compare areas"
-- Main area: Chat message thread (scrollable). Mix of user messages (right-aligned, 
-  cyan bubble) and AI responses (left-aligned, dark glass card with subtle border)
-- AI responses contain inline "tool call badges" — small pill-shaped tags showing 
-  🛠️ geocode(), 🛠️ query_osm(), etc. in monospace font with indigo background
-- Bottom: Input bar with dark glass background, rounded, with a send button 
-  (cyan arrow icon) and a microphone icon
+LAYOUT — Horizontal split screen:
 
+═══════════════════════════════════════════════════════════════════
+LEFT PANEL (40% width, background #111827):
+
+  TOP BAR (height 64px, border-bottom rgba(255,255,255,0.06)):
+    - Left: Cyan brain-city icon (24px) + "NagorMind" bold 18px white
+      + "v2" small pill badge (indigo #6366f1 background, 10px font)
+    - Right: Settings gear icon (muted gray), 20px
+
+  SUGGESTED QUERY CHIPS (horizontal row, padding 16px, gap 8px):
+    4 clickable pill-shaped chips, each rounded-full, height 32px, 
+    padding 6px 14px, 12px Inter font:
+    
+    Chip 1: "🚩 Accountability — Mirpur" 
+      → border: 1px solid #facc15, bg rgba(250,204,21,0.08)
+      → INTERACTIVE: On click → navigate to Prompt 3 (sends pre-canned 
+        query "Run infrastructure delivery gap analysis for Mirpur")
+    
+    Chip 2: "🏥 Healthcare gaps" 
+      → border: 1px solid #00d4ff, bg rgba(0,212,255,0.08)
+      → INTERACTIVE: On click → navigate to Prompt 2 (sends query 
+        "Find hospitals and clinics near my area")
+    
+    Chip 3: "🌊 Flood risk" 
+      → border: 1px solid #3b82f6, bg rgba(59,130,246,0.08)
+      → INTERACTIVE: On click → navigate to Prompt 2 (sends query 
+        "Assess flood risk in Mohammadpur")
+    
+    Chip 4: "📊 Compare areas"
+      → border: 1px solid #6366f1, bg rgba(99,102,241,0.08)
+      → INTERACTIVE: On click → navigate to Prompt 2 (sends query 
+        "Compare healthcare between Mirpur and Dhanmondi")
+    
+    ALL CHIPS: hover state → background opacity increases to 0.15, 
+    cursor pointer, scale(1.02)
+
+  CENTER CONTENT (vertically centered in remaining space):
+    - Large brain-city icon (64px) in cyan #00d4ff with subtle glow
+      (box-shadow: 0 0 40px rgba(0,212,255,0.2))
+    - "Welcome to NagorMind" — bold 24px white, margin-top 16px
+    - "AI-powered urban planning advisor for Dhaka" — 14px #94a3b8
+    - Spacer 24px
+
+    4 CLICKABLE ACTION CARDS (2x2 grid, gap 12px):
+      Each card: 230x100px, background rgba(17,24,39,0.6), 
+      border 1px solid rgba(255,255,255,0.06), rounded-lg (12px)
+      
+      Card 1: 🏥 icon (24px) + "Healthcare Access" bold 14px + 
+        "Find hospitals, clinics & coverage gaps" 12px muted
+        → INTERACTIVE: click → navigate to Prompt 2, sends 
+          "Show healthcare facilities near Mirpur 10"
+        → Hover: border-color #00d4ff, glow, scale(1.02)
+        → Backend: sends { type: "query", text: "..." } via WebSocket
+      
+      Card 2: 🌊 icon + "Flood Risk Analysis" + 
+        "Assess drainage & vulnerability" 
+        → INTERACTIVE: click → Prompt 2, query "Assess flood risk in Mohammadpur"
+      
+      Card 3: 📊 icon + "Compare Areas" + 
+        "Side-by-side area analysis"
+        → INTERACTIVE: click → Prompt 2, query "Compare Mirpur and Dhanmondi"
+      
+      Card 4: 🚩 icon (with amber glow) + "Infrastructure Accountability" + 
+        "Cross-reference spending vs. reality"
+        → INTERACTIVE: click → Prompt 3, query "Check delivery gaps in Mirpur"
+        → This card has amber border (#facc15) instead of default
+
+  BOTTOM TEXT:
+    "Powered by Gemini 2.5 Flash · 13 specialized urban analysis tools" 
+    12px #64748b, centered
+
+  INPUT BAR (sticky bottom, height 60px, padding 12px):
+    - Background: rgba(17,24,39,0.9), backdrop-blur, border-top rgba(255,255,255,0.06)
+    - Input field: full width minus button, rounded-full (24px radius), 
+      height 44px, background #1e293b, border 1px solid rgba(255,255,255,0.1),
+      padding-left 16px, placeholder "Ask about any area in Dhaka..." 
+      in #64748b, font 14px Inter
+    - Send button: 44px circle, background #00d4ff, white arrow-up icon
+      → INTERACTIVE: click → navigate to Prompt 2 with typed text
+      → Hover: background #00bfe6, scale(1.05)
+      → Backend: sends { type: "query", text: inputValue } via WebSocket
+
+═══════════════════════════════════════════════════════════════════
 RIGHT PANEL (60% width):
-- A full-height dark-themed map (like Mapbox dark style or CartoDB dark matter)
-- Map shows Dhaka with subtle road outlines
-- Overlay markers: colored circle pins (green, yellow, orange, red) scattered 
-  across the map
-- Coverage radius circles shown as semi-transparent cyan rings
-- Red/gap zones shown as semi-transparent red polygons
-- Bottom-right corner: small legend card showing gap score colors
 
-Background: #0a0f1e. All panels use glassmorphism with backdrop-blur. 
-Subtle grid pattern on background. No device frames. Desktop viewport 1440x900.
-Font: Inter for UI, JetBrains Mono for code/tool badges.
+  FULL-HEIGHT MAP:
+    - Dark basemap (CartoDB dark matter) — very dark navy with subtle gray roads
+    - Centered on Dhaka (23.8103°N, 90.4125°E), zoom level 12
+    - Buriganga river visible as dark blue
+    - No markers yet (empty state)
+    - Subtle "Explore Dhaka's infrastructure" watermark text centered on map,
+      16px #64748b at 30% opacity
+    
+  MAP CONTROLS (top-right, vertical stack):
+    - Zoom + button: 32x32 glass card, "+" white, rounded-md
+    - Zoom - button: same style, "−" 
+    - Layer toggle button: same style, layers icon
+    All have hover: background rgba(255,255,255,0.1)
+
+═══════════════════════════════════════════════════════════════════
+
+Background: #0a0f1e with very subtle radial gradient (cyan at 3% opacity) 
+centered behind the welcome content. Font: Inter.
 ```
 
 ---
 
-## 2. CHAT PANEL — Detailed View
+## PROMPT 2 — Dashboard with Active Chat + Map Results
 
-### Figma Make Prompt:
-
-```
-Design a detailed AI chat panel for an urban planning tool. Dark mode. 
-Width: 560px. Height: full screen (900px).
-
-TOP SECTION:
-- Logo row: Cyan brain-city icon + "NagorMind" in bold 20px Inter + 
-  "v2" badge in small indigo pill
-- Divider line (subtle, rgba white 6% opacity)
-
-SUGGESTED QUERIES ROW:
-- Horizontal scrollable row of pill-shaped chips:
-  "🚩 Accountability Check — Mirpur" (amber border)
-  "🏥 Healthcare gaps" (cyan border)  
-  "🌊 Flood risk" (blue border)
-  "📊 Compare areas" (indigo border)
-- Each chip: 12px Inter, rounded-full, semi-transparent bg, 1px colored border
-
-CHAT THREAD (scrollable):
-Show 3 messages:
-
-Message 1 (User - right aligned):
-  Cyan bubble with white text: "Analyze flood infrastructure in Mirpur 10"
-
-Message 2 (AI - left aligned, glass card):
-  Show the agent reasoning chain:
-  - "🔍 Let me check drainage infrastructure..." in italic muted text
-  - Tool call badge: "🛠️ query_osm_infrastructure()" — small indigo pill, mono font
-  - Arrow "→ Found: 8 drain segments mapped" in success green
-  - Tool call badge: "🛠️ check_infrastructure_delivery()" — small indigo pill
-  - Arrow "→ Gap: 64% — 🚩 Very High" in danger red
-  - Divider
-  - Main response text in white, with a highlighted gap score block:
-    amber/red bordered card showing "Infrastructure Delivery Gap: 🚩 VERY HIGH (64%)"
-  - Disclaimer banner at bottom: amber background, small text:
-    "⚠️ Statistical anomaly flag only. Not evidence of wrongdoing."
-
-Message 3 (User):
-  "Show me more details about the DNCC projects"
-
-INPUT BAR (bottom, sticky):
-  Dark glass rounded bar, placeholder "Ask about any area in Dhaka...", 
-  cyan send arrow button, mic icon. Height ~50px.
-
-Colors: bg #111827, text #f1f5f9, muted #94a3b8. Font: Inter 14px body, 
-JetBrains Mono 11px for tool badges.
-```
-
----
-
-## 3. MAP PANEL — With Accountability Flags
-
-### Figma Make Prompt:
+**Figma Page Name**: `Dashboard - Active Chat`  
+**This is**: The app after user asks a question. Shows reasoning chain + map markers.  
+**Backend Messages Shown**:
+- `{ type: "reasoning" }` → italic thinking text
+- `{ type: "tool_call" }` → 🛠️ badges
+- `{ type: "tool_result" }` → → result text
+- `{ type: "response" }` → final AI answer
+- `{ type: "map_render" }` → markers/circles appear on map  
+**Prev Page**: Prompt 1 (user submitted query)  
+**Next Page**: If Tool 13 called → Prompt 3. Click any map marker → popup.
 
 ```
-Design a dark-themed interactive map panel for an urban planning AI tool. 
-Width: 880px. Height: 900px. Shows Dhaka, Bangladesh.
+Design the active chat state of the NagorMind dashboard. Same split-screen 
+layout as Prompt 1 but now with an active conversation and map markers.
+Desktop 1440x900. Dark mode.
 
-MAP STYLE:
-- Dark basemap (CartoDB dark matter style) — very dark navy/black roads 
-  with subtle gray outlines
-- Dhaka metro area visible with major roads and water bodies (Buriganga river)
+═══════════════════════════════════════════════════════════════════
+LEFT PANEL (40% width, #111827):
 
-MAP OVERLAYS:
-1. Coverage circles: 2-3 semi-transparent cyan (#00d4ff at 15% opacity) 
-   circles showing service coverage radii (different sizes: 500m, 1km, 2km)
+  TOP BAR: Same as Prompt 1 (logo + settings icon)
 
-2. Gap zones: 1-2 semi-transparent red (#ef4444 at 20% opacity) polygon 
-   areas showing underserved zones
+  SUGGESTED CHIPS ROW: Same 4 chips as Prompt 1, slightly dimmed now
 
-3. Accountability flag pins (5-6 scattered across north Dhaka):
-   - 2x Red flag pins 🚩 with glow effect (Very High gap)
-   - 1x Orange circle pin 🔴 (High gap)
-   - 2x Yellow warning pins ⚠️ (Moderate gap)
-   - 1x Green check pin ✅ (Low gap)
+  CHAT THREAD (scrollable, flex-grow, padding 16px, gap 12px):
 
-4. Amenity markers: Small cyan dots for hospitals, small green dots for schools
+    MESSAGE 1 — USER (right-aligned):
+      - Cyan gradient bubble (from #00d4ff to #0891b2), rounded-lg (top-right 
+        corner: 4px, others: 16px), padding 10px 14px
+      - Text: "Find hospitals near Mirpur 10" — white 14px
+      - Timestamp below: "12:34 PM" — 11px #64748b, right-aligned
+      
+    MESSAGE 2 — AI REASONING (left-aligned, glass card):
+      - Background: rgba(17,24,39,0.6), border 1px solid rgba(255,255,255,0.06),
+        rounded-lg, padding 14px
+      - Maximum width: 85% of panel
+      
+      Content (sequential, each item 6px gap):
+      
+      Line 1: "🔍 Let me find hospitals near Mirpur 10..." 
+        → italic, 13px, color #00d4ff at 70% opacity
+        → This shows when backend sends { type: "reasoning", text: "..." }
+      
+      Line 2: TOOL BADGE — "🛠️ geocode("Mirpur 10")"
+        → Inline pill: height 24px, padding 4px 10px, rounded-full
+        → Background: rgba(99,102,241,0.2), border 1px solid rgba(99,102,241,0.4)
+        → Font: JetBrains Mono 11px, color #a5b4fc
+        → Left icon: 🛠️
+        → Right side: small green ✅ checkmark (completed state)
+        → This shows when backend sends { type: "tool_call", tool: "geocode" }
+      
+      Line 3: RESULT — "→ Mirpur 10: 23.8069°N, 90.3687°E"
+        → 12px Inter, color #4ade80 (green), padding-left 28px (indented)
+        → This shows when backend sends { type: "tool_result" }
+      
+      Line 4: TOOL BADGE — "🛠️ query_osm_amenities(hospital, clinic)"
+        → Same pill style as Line 2, with ✅ check
+        
+      Line 5: RESULT — "→ Found: 5 hospitals, 9 clinics within 2km"
+        → Green text, indented
+      
+      Line 6: TOOL BADGE — "🛠️ render_on_map(14 markers)"
+        → Same pill, ✅ check
+      
+      Line 7: RESULT — "→ Rendered 14 healthcare facilities on map"
+        → Green text, indented
+        → When this renders, markers appear on the RIGHT panel map
+      
+      DIVIDER: thin line, rgba(255,255,255,0.06), margin 8px 0
+      
+      Line 8: FINAL RESPONSE (from { type: "response" }):
+        "I found **14 healthcare facilities** within 2km of Mirpur 10:
+        
+         • **5 hospitals** including Mirpur General Hospital
+         • **9 clinics** including 3 government community clinics
+         
+         The nearest hospital is **Mirpur General** (450m from center).
+         
+         Coverage is **moderate** — the WHO recommends 1 primary care 
+         facility per 10,000 population. With an estimated 90,000 people 
+         in this area, the 14 facilities meet the standard, but 
+         distribution is uneven (see gap zones on map)."
+        → 14px Inter, color #f1f5f9, bold text highlighted
+        → Links/numbers in cyan #00d4ff
+    
+    MESSAGE 3 — USER:
+      "What about air quality here?"
+    
+    MESSAGE 4 — AI (currently loading):
+      - Glass card with pulsing indicator:
+        Three cyan dots (●●●) with wave animation
+        "🔍 Checking air quality sensors near Mirpur 10..."
+        → italic cyan at 70% opacity
+        ⏳ "🛠️ get_air_quality()" — tool badge with spinning cyan border
+           (instead of ✅, shows ⏳ hourglass)
+        → This is the LOADING STATE while backend is processing
 
-5. Thana boundary: Dashed white line showing one thana boundary outline
+  INPUT BAR (sticky bottom): Same as Prompt 1
+    → INTERACTIVE: type + click send → sends new { type: "query" } to backend
+    → New messages append to chat thread above
 
-LEGEND (bottom-right, glass card, 200x120px):
-  Title: "Infrastructure Delivery Gap"
-  🚩 Very High (>60%) — red
-  🔴 High (40-60%) — orange
-  ⚠️ Moderate (20-40%) — yellow
-  ✅ Low (<20%) — green
+═══════════════════════════════════════════════════════════════════
+RIGHT PANEL (60% width) — MAP WITH RESULTS:
 
-MAP CONTROLS (top-right):
-  Zoom +/- buttons, layer toggle button, all in dark glass style
+  Same dark basemap, but now zoomed to Mirpur 10 area (zoom 14)
+  
+  MARKERS ON MAP:
+    - 5 large cyan circle markers (12px radius) for hospitals
+      → Each has white "H" label inside
+      → INTERACTIVE: click any marker → shows Leaflet popup with:
+        Name, type, distance, OSM tags
+        → Backend: data comes from { type: "tool_result" } of query_osm
+    
+    - 9 smaller cyan circle markers (8px radius) for clinics
+      → Each has white "+" label
+      → INTERACTIVE: click → popup with clinic details
+    
+    - 1 large dashed cyan circle (2km radius) centered on Mirpur 10
+      → Semi-transparent fill: rgba(0,212,255,0.08)
+      → Dashed border: 2px dashed #00d4ff at 40% opacity
+      → Label at bottom of circle: "2km search radius"
+    
+    - PULSING CENTER DOT: red dot at the search center (23.8069, 90.3687)
+      → 6px radius, pulsing animation (opacity 1→0.5→1)
+      → Label: "Mirpur 10"
 
-No device frames. Background behind map: #0a0f1e
-```
+  LEGEND (bottom-right, glass card 180x80px):
+    - "Healthcare Facilities"
+    - 🏥 Hospital (5) — cyan large dot
+    - ➕ Clinic (9) — cyan small dot
+    - ⭕ Search radius — dashed circle
 
----
+  MAP CONTROLS: Same as Prompt 1
 
-## 4. FLAG POPUP — Infrastructure Delivery Popup
-
-### Figma Make Prompt:
-
-```
-Design a map popup card for an urban infrastructure accountability tool. 
-Dark mode. Width: 340px. Floating card with shadow and subtle glow.
-
-POPUP DESIGN:
-- Background: #1e293b with 1px border rgba(255,255,255,0.1)
-- Border-radius: 12px
-- Box shadow: 0 8px 32px rgba(0,0,0,0.6)
-- Small triangle pointer at bottom center (pointing to map pin)
-
-CONTENT:
-Row 1: Red flag emoji 🚩 + "Mirpur Drainage Phase 2" in bold 16px white
-
-Row 2 (info grid, 2 columns):
-  Left column label (muted gray 12px): "Budget"
-  Left column value (white 14px): "BDT 4.5 Crore (2022)"
-  Right column label: "Agency"
-  Right column value: "DNCC"
-
-Row 3 (info grid):
-  Left: "Expected" → "~18 drain segments"
-  Right: "OSM Found" → "6 segments" (in red)
-
-Row 4: Delivery gap bar
-  - Full-width progress bar, background dark gray
-  - Filled 67% with gradient from orange to red
-  - Text overlay: "67% — Very High" in bold white
-  - Small 🚩 icon at end
-
-Row 5: Two action buttons side by side
-  - "View Source ↗" — outline cyan button
-  - "Ask AI About It" — filled cyan button
-  Both: rounded-md, 13px Inter font
-
-Row 6: Disclaimer
-  - Amber/yellow tinted background (rgba), rounded
-  - "⚠️ Statistical flag only. Not evidence of wrongdoing." 
-  - 11px muted text
-
-Font: Inter. No device frame.
+═══════════════════════════════════════════════════════════════════
 ```
 
 ---
 
-## 5. ACCOUNTABILITY PANEL — Slide-in Side Panel
+## PROMPT 3 — Dashboard with Accountability Flags on Map
 
-### Figma Make Prompt:
-
-```
-Design a slide-in side panel for accountability flags in a dark mode urban 
-planning dashboard. Width: 380px. Height: full screen (900px). Appears on 
-the right side overlaying the map.
-
-HEADER:
-- "🚩 Accountability Flags" title in bold 18px white
-- Subtitle: "Mirpur Area — 2020-2024" in 13px muted gray
-- Close X button (top right)
-- Divider
-
-SUMMARY CARD (glass card, full width):
-  - "5 projects analyzed" in cyan
-  - "3 flagged" in red
-  - "BDT 12.4 Crore total budget" in white
-  - Small donut chart or bar showing: 1 Very High, 1 High, 1 Moderate, 2 Low
-
-FILTER CHIPS ROW:
-  "All", "🚩 Very High", "🔴 High", "⚠️ Moderate" — small toggleable pills
-
-FLAGGED PROJECTS LIST (scrollable):
-
-Card 1 (red left border):
-  🚩 "Mirpur Drainage Phase 2"
-  Budget: BDT 4.5 Cr | Gap: 67%
-  Red progress bar filled 67%
-  "DNCC • 2022" in muted text
-
-Card 2 (red left border):
-  🚩 "Pallabi Road Widening"  
-  Budget: BDT 3.2 Cr | Gap: 72%
-  Red progress bar filled 72%
-  "DSCC • 2021" in muted text
-
-Card 3 (orange left border):
-  🔴 "Mirpur-10 Health Clinic"
-  Budget: BDT 2.1 Cr | Gap: 45%
-  Orange progress bar filled 45%
-  "DGHS • 2022" in muted text
-
-Card 4 (green left border):
-  ✅ "Kazipara Primary School Extension"
-  Budget: BDT 1.8 Cr | Gap: 12%
-  Green progress bar filled 12%
-  "DPE • 2023" in muted text
-
-Card 5 (green left border):
-  ✅ "Mirpur WASA Pipeline"
-  Budget: BDT 0.8 Cr | Gap: 8%
-  Green progress bar filled 8%
-  "DWASA • 2023" in muted text
-
-BOTTOM BAR (sticky):
-  "Export Report" button (filled cyan, full width)
-  "⚠️ All analysis based on public data only" in 11px muted text
-
-Background: #111827 with backdrop-blur. Cards: #1e293b with subtle borders.
-Font: Inter. No device frame.
-```
-
----
-
-## 6. GAP METER COMPONENT
-
-### Figma Make Prompt:
+**Figma Page Name**: `Dashboard - Map Flags`  
+**This is**: The app after an accountability check. Map shows colored flag pins.  
+**Backend Messages Shown**:
+- `{ type: "accountability_flags", flags: [...] }` → flag pins appear on map
+- `{ type: "response" }` → includes gap analysis + disclaimer  
+**Prev Page**: Prompt 2 (agent decided to call Tool 13)  
+**Next Page**: Click flag pin → Prompt 4 (popup). Click "🚩 Flags" button → Prompt 5 (panel).
 
 ```
-Design a delivery gap score meter component. Dark mode. Width: 300px. Height: 80px.
+Design the accountability check state of the NagorMind dashboard. Same 
+split-screen but map now shows colored infrastructure delivery flag pins 
+and chat shows the gap analysis result. Desktop 1440x900. Dark mode.
 
-The component shows:
-- Label "Infrastructure Delivery Gap" in 12px muted gray, left-aligned
-- A horizontal progress bar (full width, height 10px, rounded-full):
-  - Background: #1e293b (dark)
-  - Fill: gradient based on percentage
-    - 0-20%: green (#4ade80)
-    - 20-40%: yellow (#facc15)  
-    - 40-60%: orange (#fb923c)
-    - 60-100%: red (#ef4444)
-  - The bar is filled to 67%
-- Below bar, right-aligned: "67%" in bold 20px red + "Very High 🚩" in 14px red
-- Below that: "Expected: 18 | Found: 6" in 12px muted gray
+═══════════════════════════════════════════════════════════════════
+LEFT PANEL (40%, #111827):
 
-Show 4 variants stacked vertically:
-  1. Low gap (12%) — green fill
-  2. Moderate gap (35%) — yellow fill
-  3. High gap (52%) — orange fill
-  4. Very High gap (67%) — red fill
+  TOP BAR + CHIPS: Same as before
 
-Background: transparent. Font: Inter.
-```
+  CHAT THREAD (showing accountability query):
 
----
+    MESSAGE 1 — USER:
+      "Check public infrastructure delivery for drainage projects in Mirpur"
 
-## 7. TOOL CALL BADGE COMPONENTS
+    MESSAGE 2 — AI (completed, glass card):
+      
+      Line 1: "🔍 Let me cross-reference public spending with ground truth..."
+        → italic cyan
+      
+      Line 2: 🛠️ geocode("Mirpur") → ✅ 
+      Line 3: → "Mirpur: 23.807°N, 90.368°E" (green)
+      
+      Line 4: 🛠️ check_infrastructure_delivery() 
+        → This badge has AMBER border instead of indigo (special tool)
+        → Background: rgba(250,204,21,0.15), border: 1px solid rgba(250,204,21,0.4)
+        → ✅ completed
+      Line 5: → "Found 2 DNCC projects · BDT 6.2 Crore · 2021-2023" (white)
+      Line 6: → "OSM evidence: 8 drain segments" (white)
+      Line 7: → "Expected: ~22 segments from budget" (white)
+      Line 8: → "Delivery gap: 64% — 🚩 Very High" (RED #ef4444, bold)
+        → This line triggers the flag pins on the map
+      
+      Line 9: 🛠️ render_on_map(3 flags) → ✅
+      
+      DIVIDER
+      
+      Line 10: FINAL RESPONSE:
+        "Drainage infrastructure in Mirpur shows a **significant delivery gap**.
+         
+         Public records show **2 DNCC drainage projects** worth **BDT 6.2 Crore** 
+         approved for this area (2021-2023). Based on CPTU standard unit costs, 
+         that budget should yield approximately **22 drain segments**.
+         
+         OSM currently maps only **8 drain segments** within 2km."
+      
+      GAP SCORE CARD (embedded in message):
+        → Amber/red bordered card (border-left: 4px solid #ef4444)
+        → Background: rgba(239,68,68,0.08)
+        → Content: 
+          "Infrastructure Delivery Gap"  (12px muted)
+          "🚩 VERY HIGH — 64%"  (bold 18px #ef4444)
+          Progress bar: 300px wide, 8px tall, filled 64% with red gradient
+          "Expected: 22  |  Found: 8  |  Gap: 14 segments" (12px muted)
+      
+      SOURCES SECTION:
+        → "📄 Sources:" label
+        → "[IMED Project #DNCC-2021-0089]" — clickable cyan link
+          → INTERACTIVE: opens source_url in new tab
+          → Backend: URL comes from tool_result.source_urls[]
+        → "[DNCC-2022-0134]" — clickable cyan link
+      
+      DISCLAIMER BANNER (MANDATORY, non-dismissable):
+        → Background: rgba(250,204,21,0.1), border 1px solid rgba(250,204,21,0.3)
+        → Rounded-md, padding 10px 12px
+        → "⚠️ This is a statistical anomaly flag based on public data only. 
+           It does not constitute evidence of wrongdoing. Gaps may reflect 
+           OSM incompleteness, project delays, or scope changes."
+        → 12px Inter, color #facc15 at 80% opacity
+        → This ALWAYS appears on every accountability response
 
-### Figma Make Prompt:
+  INPUT BAR: Same
 
-```
-Design a component library of "tool call badges" for an AI agent chat interface. 
-Dark mode.
+═══════════════════════════════════════════════════════════════════
+RIGHT PANEL (60%) — MAP WITH FLAG PINS:
 
-Each badge is a small inline pill showing an AI tool being called:
-- Height: 24px
-- Padding: 4px 10px
-- Border-radius: full (pill shape)
-- Background: #312e81 (deep indigo at 60% opacity)
-- Border: 1px solid #4338ca (indigo, subtle)
-- Font: JetBrains Mono, 11px, color #a5b4fc (light indigo)
-- Icon: 🛠️ prefix
+  Map zoomed to Mirpur area (zoom 13)
+  
+  ACCOUNTABILITY FLAG PINS (from { type: "accountability_flags" }):
+  
+    Pin 1 — 🚩 RED FLAG (23.807, 90.368):
+      → Custom marker: red circle (16px) with 🚩 emoji or flag icon
+      → Red glow: box-shadow 0 0 12px rgba(239,68,68,0.4)
+      → Label floating above: "Drainage Phase 2 · 67%" in 11px white on
+        dark pill background
+      → INTERACTIVE: click → OPEN Prompt 4 (Flag Popup) as overlay
+      → Backend data: from accountability_flags[0]
+    
+    Pin 2 — 🚩 RED FLAG (23.812, 90.372):
+      → Same style as Pin 1
+      → Label: "Pallabi Road · 72%"
+      → INTERACTIVE: click → Prompt 4 popup with Pin 2 data
+    
+    Pin 3 — 🔴 ORANGE PIN (23.801, 90.365):
+      → Orange circle (14px) with ⚠️ icon
+      → Orange glow: box-shadow 0 0 10px rgba(251,146,60,0.3)
+      → Label: "Health Clinic · 45%"
+      → INTERACTIVE: click → Prompt 4 popup
+    
+    Pin 4 — ✅ GREEN PIN (23.815, 90.375):
+      → Green circle (12px) with ✅ icon, subtle green glow
+      → Label: "School Extension · 12%"
+      → INTERACTIVE: click → Prompt 4 popup (shows low gap = good)
+    
+    Pin 5 — ✅ GREEN PIN (23.809, 90.360):
+      → Same green style
+      → Label: "WASA Pipeline · 8%"
 
-Show these 13 badge variants in a grid:
-  🛠️ geocode("Mirpur")
-  🛠️ query_osm_amenities()
-  🛠️ query_osm_infrastructure()
-  🛠️ get_boundary("Dhanmondi")
-  🛠️ get_air_quality()
-  🛠️ get_weather()
-  🛠️ compute_service_coverage()
-  🛠️ estimate_flood_risk()
-  🛠️ compare_locations()
-  🛠️ estimate_intervention_cost()
-  🛠️ search_urban_standards()
-  🛠️ render_on_map()
-  🛠️ check_infrastructure_delivery()  ← this one has amber border instead of indigo
+  EXISTING LAYERS:
+    - 8 drain segments shown as cyan polylines on the map
+    - Dashed 2km radius circle
 
-Also show a "result badge" variant:
-  → "Found: 8 drain segments" — green text, no background, 12px Inter
-  → "Gap: 64% — Very High 🚩" — red text, no background, 12px Inter bold
+  LEGEND (bottom-right, glass card 200x130px):
+    "Infrastructure Delivery Gap"
+    🚩 Very High (>60%) — red dot
+    🔴 High (40-60%) — orange dot  
+    ⚠️ Moderate (20-40%) — yellow dot
+    ✅ Low (<20%) — green dot
 
-Background: #0a0f1e. Arrange in neat rows.
-```
+  ACCOUNTABILITY BUTTON (bottom-left, floating):
+    → Glass card button: "🚩 3 Flags Found" 
+    → Background: rgba(239,68,68,0.15), border 1px solid rgba(239,68,68,0.4)
+    → 13px Inter bold, white text, 🚩 emoji
+    → Pulsing subtle red glow animation
+    → INTERACTIVE: click → OPEN Prompt 5 (Accountability Panel) as slide-in
+    → Badge: red circle with "3" count (top-right of button)
 
----
-
-## 8. MOBILE RESPONSIVE VIEW
-
-### Figma Make Prompt:
-
-```
-Design a mobile-responsive version of the NagorMind urban planning AI dashboard. 
-Dark mode. Width: 390px (iPhone 14). Height: 844px. No device frame.
-
-LAYOUT: Stacked vertical (map on top, chat below) with a toggle tab bar.
-
-TOP BAR:
-- "NagorMind" logo (small, 16px) left, hamburger menu right
-- Height: 48px, background: #111827
-
-TAB BAR (below top bar):
-- Two tabs: "💬 Chat" and "🗺️ Map", pill-style toggle
-- Active tab: cyan background, white text
-- Inactive: transparent, muted text
-
-MAP VIEW (when Map tab active):
-- Full width, ~50% height
-- Same dark basemap with Dhaka
-- Flag pins visible
-- Floating action button (bottom-right): "🚩" to open accountability panel
-- Legend collapsed into a small expandable pill
-
-CHAT VIEW (when Chat tab active):
-- Same chat thread as desktop but single column
-- Tool call badges wrap nicely on narrow width
-- Input bar at bottom with safe area padding
-
-ACCOUNTABILITY PANEL (full-screen overlay when opened):
-- Same content as desktop slide-in but full width
-- Swipe down to close gesture indicator (grabber bar at top)
-
-Colors and fonts same as desktop. Show the Chat tab active state.
+═══════════════════════════════════════════════════════════════════
 ```
 
 ---
 
-## 9. LOADING / REASONING STATE
+## PROMPT 4 — Flag Popup (Map Overlay)
 
-### Figma Make Prompt:
-
-```
-Design a loading/reasoning state for the AI chat in a dark mode dashboard. 
-Width: 540px.
-
-Show a chat message from the AI that is currently "thinking":
-
-REASONING BLOCK (glass card, left-aligned):
-  - Animated pulsing cyan dot indicator (3 dots) at top
-  - "🔍 Analyzing drainage infrastructure in Mirpur 10..." in italic 
-    muted cyan text (animated feel)
-  - Below: Sequential tool calls appearing one by one:
-    ✅ 🛠️ geocode("Mirpur 10") — completed (green check, muted)  
-    ✅ 🛠️ query_osm_infrastructure() — completed (green check, muted)
-       → Found: 8 drain segments (green text)
-    ⏳ 🛠️ check_infrastructure_delivery() — in progress (spinning cyan)
-       Skeleton loading bar placeholder (animated shimmer)
-    ○ 🛠️ render_on_map() — pending (gray, dimmed)
-
-  - Progress indicator at bottom: "Step 3 of 4" with thin cyan progress bar
-
-Background: #111827 card on #0a0f1e background. 
-Font: Inter 14px, JetBrains Mono 11px for tool names.
-Show the shimmer/loading animation state frozen mid-frame.
-```
-
----
-
-## 10. EMPTY STATE / ONBOARDING
-
-### Figma Make Prompt:
+**Figma Page Name**: `Flag Popup - Detail`  
+**This is**: A popup card that appears when clicking a flag pin on the map.  
+**Backend Data Source**: Individual flag object from `{ type: "accountability_flags" }.flags[i]`  
+**Prev Page**: Prompt 3 (clicked a flag pin)  
+**Interactions**: "View Source" → opens govt URL. "Ask AI" → sends follow-up query (→ Prompt 2)
 
 ```
-Design an empty/welcome state for the NagorMind AI chat panel. Dark mode. 
-Width: 540px. Height: 700px.
+Design this as an OVERLAY on top of Prompt 3's map. Show the map dimmed slightly 
+in the background with this popup card floating above a red flag pin.
+Width of popup: 340px. Dark mode.
 
-CENTER CONTENT:
-- Large brain-city icon (64px) in cyan with subtle glow
-- "Welcome to NagorMind" in bold 24px white
-- "AI-powered urban planning advisor for Dhaka" in 14px muted gray
-- Spacer (24px)
+BACKGROUND: The Prompt 3 map, slightly dimmed (overlay rgba(0,0,0,0.3))
 
-SUGGESTED ACTIONS (grid of 4 cards, 2x2):
-  Each card: 240x100px, glass background, rounded-lg, hover glow effect
+POPUP CARD (centered on pin, floating above it):
+  - Background: #1e293b
+  - Border: 1px solid rgba(255,255,255,0.1)
+  - Border-radius: 12px
+  - Box-shadow: 0 8px 32px rgba(0,0,0,0.6)
+  - Small triangle pointer at bottom-center pointing to the pin below
+  - Padding: 16px
 
-  Card 1: 🏥 icon
-    "Healthcare Access"
-    "Find hospitals, clinics & coverage gaps" in muted text
+  CLOSE BUTTON (top-right): "✕" in muted gray, 20px
+    → INTERACTIVE: click → close popup, return to Prompt 3
 
-  Card 2: 🌊 icon
-    "Flood Risk Analysis"  
-    "Assess drainage & vulnerability" in muted text
+  ROW 1: Header
+    🚩 emoji (20px) + "Mirpur Drainage Phase 2" — bold 16px white
+    → Data from: flags[i].project_name
 
-  Card 3: 📊 icon
-    "Compare Areas"
-    "Side-by-side area analysis" in muted text
+  ROW 2: Info Grid (2 columns, gap 16px, margin-top 12px):
+    Col 1:
+      Label: "Budget" — 11px #64748b
+      Value: "BDT 4.5 Crore" — 14px white bold
+      Sub: "(2022)" — 11px #94a3b8
+      → Data from: flags[i].budget_bdt (formatted to Crore)
+    
+    Col 2:
+      Label: "Agency" — 11px #64748b  
+      Value: "DNCC" — 14px white bold
+      → Data from: flags[i].agency
 
-  Card 4: 🚩 icon (with amber glow)
-    "Infrastructure Accountability"
-    "Cross-reference spending vs. reality" in muted text
+  ROW 3: Evidence Grid (2 columns, margin-top 12px):
+    Col 1:
+      Label: "Expected" — 11px #64748b
+      Value: "~18 drain segments" — 14px white
+      → Data from: flags[i].expected_count
+    
+    Col 2:
+      Label: "OSM Found" — 11px #64748b
+      Value: "6 segments" — 14px #ef4444 bold (RED because gap is high)
+      → Data from: flags[i].osm_count
 
-BOTTOM:
-  "Powered by Gemini 2.5 Flash · 13 specialized urban analysis tools" 
-  in 12px muted text
+  ROW 4: Gap Score Bar (margin-top 14px):
+    Label: "Delivery Gap Score" — 11px #64748b
+    Progress bar: full width, height 10px, rounded-full
+      Background: #1e293b
+      Fill: 67% width, gradient from #fb923c to #ef4444 (left to right)
+    Below bar:
+      Left: "0%" in 10px muted
+      Right: "67% — Very High 🚩" in 14px bold #ef4444
+    → Data from: flags[i].gap_percent, flags[i].gap_label
 
-Background: #0a0f1e with subtle radial gradient glow (cyan, very faint) 
-behind the icon. Font: Inter.
-```
+  ROW 5: Action Buttons (margin-top 14px, flex row, gap 8px):
+    Button 1: "View Source ↗" 
+      → Outline style: border 1px solid #00d4ff, transparent bg, 
+        color #00d4ff, rounded-md, padding 8px 16px, 13px Inter
+      → INTERACTIVE: click → opens flags[i].source_url in new browser tab
+      → Hover: bg rgba(0,212,255,0.1)
+    
+    Button 2: "Ask AI About It"
+      → Filled style: bg #00d4ff, color white, rounded-md, 
+        padding 8px 16px, 13px Inter bold
+      → INTERACTIVE: click → close popup + navigate to Prompt 2 
+        + send query: "Tell me more about the {project_name} project 
+        in {thana}. What could explain the delivery gap?"
+      → Hover: bg #00bfe6, scale(1.02)
+      → Backend: sends { type: "query", text: "..." } via WebSocket
 
----
-
-## Component Summary for Figma File Organization
-
-```
-📁 NagorMind UI Kit
-├── 📄 Screens/
-│   ├── Main Dashboard (Desktop 1440x900)
-│   ├── Chat Panel Detail
-│   ├── Map Panel with Flags
-│   ├── Mobile View (390x844)
-│   ├── Empty/Welcome State
-│   └── Loading/Reasoning State
-├── 📄 Components/
-│   ├── Tool Call Badge (13 variants)
-│   ├── Result Badge (success/danger variants)
-│   ├── Gap Meter (4 severity variants)
-│   ├── Flag Popup Card
-│   ├── Accountability Panel
-│   ├── Suggested Query Chip (4 variants)
-│   ├── Chat Bubble — User
-│   ├── Chat Bubble — AI Response
-│   ├── Disclaimer Banner
-│   ├── Legend Card
-│   └── Input Bar
-├── 📄 Tokens/
-│   ├── Colors
-│   ├── Typography
-│   ├── Spacing
-│   ├── Shadows & Effects
-│   └── Border Radii
-└── 📄 Icons/
-    ├── Brain-City Logo
-    ├── Flag Pins (4 severity levels)
-    ├── Tool Icons
-    └── Navigation Icons
+  ROW 6: Disclaimer (margin-top 12px):
+    Background: rgba(250,204,21,0.08)
+    Border: 1px solid rgba(250,204,21,0.2)
+    Rounded-md, padding 8px 10px
+    "⚠️ Statistical flag only. Not evidence of wrongdoing."
+    → 11px Inter, color rgba(250,204,21,0.7)
+    → This is ALWAYS visible. NEVER hide or make dismissable.
+    → Data from: flags[i].disclaimer
 ```
 
 ---
 
-*Each prompt above is self-contained — paste it directly into Figma Make or any AI design tool to generate that specific screen/component.*
+## PROMPT 5 — Accountability Panel (Slide-in Overlay)
+
+**Figma Page Name**: `Accountability Panel`  
+**This is**: A side panel that slides in from the right over the map.  
+**Backend Data Source**: Full `{ type: "accountability_flags" }` message (all flags)  
+**Prev Page**: Prompt 3 (clicked the "🚩 Flags" button)  
+**Interactions**: Click project card → highlight pin on map. "Export" → generates text report.
+
+```
+Design this as a SLIDE-IN OVERLAY on the right side of Prompt 3. The panel 
+overlays the map (map is visible but dimmed behind it on the left).
+Panel width: 380px. Full height: 900px. Dark mode.
+
+PANEL (right-aligned, full height):
+  Background: rgba(17,24,39,0.95), backdrop-filter blur(20px)
+  Border-left: 1px solid rgba(255,255,255,0.08)
+  Box-shadow: -8px 0 32px rgba(0,0,0,0.5)
+
+  ─── HEADER (padding 20px, border-bottom) ───
+
+  Row 1:
+    Left: "🚩 Accountability Flags" — bold 18px white
+    Right: CLOSE BUTTON "✕" — 22px #94a3b8
+      → INTERACTIVE: click → slide panel out (→ return to Prompt 3)
+      → Hover: color white
+  
+  Row 2: "Mirpur Area · 2020-2024" — 13px #94a3b8
+    → Data from: area name + date range of projects
+
+  ─── SUMMARY CARD (margin 16px, glass card) ───
+  
+  Background: rgba(30,41,59,0.8), border 1px solid rgba(255,255,255,0.06),
+  rounded-lg, padding 16px
+  
+  3-column stat row:
+    Stat 1: "5" large 24px bold #00d4ff + "analyzed" 11px muted below
+    Stat 2: "3" large 24px bold #ef4444 + "flagged" 11px muted below  
+    Stat 3: "₿12.4Cr" large 20px bold white + "total budget" 11px muted below
+  
+  Mini bar chart below (4 small horizontal bars):
+    Very High (1): red bar, 25% width
+    High (1): orange bar, 25% width
+    Moderate (1): yellow bar, 25% width  
+    Low (2): green bar, 50% width
+    → Labels: severity name + count, 10px muted
+
+  ─── FILTER CHIPS (padding 16px, flex-row, gap 6px) ───
+  
+  5 toggleable pill chips (height 28px, rounded-full, 11px Inter):
+    "All (5)" — ACTIVE: bg #00d4ff, white text
+      → INTERACTIVE: click → show all project cards
+    "🚩 Very High (1)" — INACTIVE: bg transparent, border #ef4444, red text
+      → INTERACTIVE: click → filter list to Very High only
+    "🔴 High (1)" — border #fb923c, orange text
+    "⚠️ Moderate (1)" — border #facc15, yellow text
+    "✅ Low (2)" — border #4ade80, green text
+  
+  Active chip: filled background. Inactive: outline only.
+  Only one chip can be active at a time.
+
+  ─── PROJECT LIST (scrollable, padding 0 16px 16px, gap 10px) ───
+  
+  CARD 1 (border-left: 3px solid #ef4444):
+    Background: #1e293b, rounded-md, padding 12px
+    Row 1: 🚩 "Pallabi Road Widening" — bold 14px white
+    Row 2: "Budget: BDT 3.2 Cr  ·  Gap: 72%" — 12px #94a3b8
+    Row 3: Progress bar (full width, 6px tall, filled 72% red gradient)
+    Row 4: "DSCC · 2021" — 11px #64748b
+    → INTERACTIVE: click → highlight/zoom this pin on map + open Prompt 4 popup
+    → Hover: border-color brightens, subtle glow
+    → Backend data: accountability_flags.flags[0]
+  
+  CARD 2 (border-left: 3px solid #ef4444):
+    🚩 "Mirpur Drainage Phase 2"
+    "Budget: BDT 4.5 Cr  ·  Gap: 67%"
+    Progress bar 67% red
+    "DNCC · 2022"
+    → Same interactions
+
+  CARD 3 (border-left: 3px solid #fb923c):
+    🔴 "Mirpur-10 Health Clinic"
+    "Budget: BDT 2.1 Cr  ·  Gap: 45%"
+    Progress bar 45% orange
+    "DGHS · 2022"
+
+  CARD 4 (border-left: 3px solid #4ade80):
+    ✅ "Kazipara Primary School Extension"
+    "Budget: BDT 1.8 Cr  ·  Gap: 12%"
+    Progress bar 12% green
+    "DPE · 2023"
+
+  CARD 5 (border-left: 3px solid #4ade80):
+    ✅ "Mirpur WASA Pipeline"
+    "Budget: BDT 0.8 Cr  ·  Gap: 8%"
+    Progress bar 8% green
+    "DWASA · 2023"
+
+  Cards are SORTED by gap_percent descending (worst first).
+
+  ─── BOTTOM BAR (sticky bottom, padding 16px) ───
+  
+  "Export Report" button:
+    Full width, height 44px, bg #00d4ff, color white, bold 14px,
+    rounded-md, centered text
+    → INTERACTIVE: click → generates a text summary of all flags 
+      and copies to clipboard (or downloads as .txt)
+    → Shows toast: "✅ Report copied to clipboard"
+    → Hover: bg #00bfe6
+    → Backend: client-side only (formats flags[] into text)
+  
+  Disclaimer: "⚠️ All analysis based on public data only" — 11px #64748b, centered
+```
+
+---
+
+## PROMPT 6 — Mobile View (Chat Tab)
+
+**Figma Page Name**: `Mobile - Chat`  
+**This is**: Mobile responsive version with chat active  
+**Same WebSocket** as desktop  
+**Interactions**: Tab bar switches between Chat (Prompt 6) and Map (Prompt 7)
+
+```
+Design a mobile version of NagorMind. Width: 390px. Height: 844px. 
+Dark mode. No device frame. Shows the Chat tab active.
+
+TOP BAR (height 48px, bg #111827, border-bottom):
+  Left: Small cyan icon (16px) + "NagorMind" 14px bold white
+  Right: Hamburger menu icon (muted gray)
+
+TAB BAR (height 40px, bg #0a0f1e, padding 4px):
+  Two tab pills side by side (50% width each), rounded-full:
+  Tab 1: "💬 Chat" — ACTIVE: bg #00d4ff, white text, bold 13px
+    → Current view
+  Tab 2: "🗺️ Map" — INACTIVE: transparent bg, #94a3b8 text, 13px
+    → INTERACTIVE: click → navigate to Prompt 7 (Mobile Map view)
+
+CHAT VIEW (full remaining height minus input bar):
+  Same chat content as Prompt 2 but:
+  - Messages use full width (no 85% max)
+  - Tool badges wrap to next line on narrow width
+  - Gap score card is full width
+  - Disclaimer banner is full width
+
+SUGGESTED CHIPS: Horizontal scrollable row (single line, overflow scroll)
+  Same 4 chips but smaller (10px font, height 28px)
+
+INPUT BAR (sticky bottom, safe area padding 34px bottom):
+  Same input field + send button but full width
+  → Same WebSocket connection as desktop
+
+FLOATING ACTION BUTTON (bottom-right, above input bar):
+  48x48 circle, bg rgba(239,68,68,0.2), border 1px solid #ef4444
+  "🚩" emoji centered
+  → INTERACTIVE: click → open FULL-SCREEN accountability panel overlay
+    (same content as Prompt 5 but full width 390px, swipe-down to close)
+  → Only visible when accountability flags exist
+  → Badge: red dot with flag count
+
+Background: #0a0f1e.
+```
+
+---
+
+## PROMPT 7 — Mobile View (Map Tab)
+
+**Figma Page Name**: `Mobile - Map`  
+**This is**: Mobile responsive version with map active  
+**Interactions**: Tab switches to Chat (Prompt 6). Flag pins clickable (Prompt 4 adapted).
+
+```
+Design the mobile MAP tab of NagorMind. Width: 390px. Height: 844px. 
+Dark mode. No device frame.
+
+TOP BAR: Same as Prompt 6
+
+TAB BAR:
+  Tab 1: "💬 Chat" — INACTIVE now
+    → INTERACTIVE: click → navigate to Prompt 6
+  Tab 2: "🗺️ Map" — ACTIVE: bg #00d4ff, white text
+
+MAP VIEW (full remaining height):
+  Same dark basemap centered on Mirpur area
+  Shows all markers and flag pins from Prompt 3
+  Touch-friendly: pins have 44px minimum tap target
+  
+  Flag pins:
+    → INTERACTIVE: tap → popup appears at bottom of screen (bottom sheet)
+       instead of floating above pin (mobile-friendly)
+    → Bottom sheet: same content as Prompt 4 popup but full width,
+       slides up from bottom, rounded-top corners, drag handle at top
+
+LEGEND: Collapsed by default into a small expandable pill (bottom-left):
+  "🗺️ Legend ▾" — small glass pill
+  → INTERACTIVE: tap → expands to show full legend card
+
+FLOATING 🚩 BUTTON: Same as Prompt 6 (bottom-right)
+  → Opens full-screen accountability panel
+
+No input bar on map tab (switch to chat tab to ask questions).
+```
+
+---
+
+## Complete Interaction Map
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    INTERACTION FLOW MAP                         │
+│                                                                 │
+│  ┌──────────┐   type query    ┌──────────────┐                 │
+│  │ Prompt 1  │───────────────→│  Prompt 2     │                 │
+│  │ Welcome   │   click chip   │  Active Chat  │                 │
+│  │ (empty)   │───────────────→│  + Map pins   │                 │
+│  └──────────┘                 └──────┬────────┘                 │
+│                                      │                          │
+│                       Tool 13 called │                          │
+│                                      ▼                          │
+│                               ┌──────────────┐                 │
+│                               │  Prompt 3     │                 │
+│                               │  Map + Flags  │←─── click      │
+│                               │               │     close      │
+│                               └──┬────────┬───┘                │
+│                     click pin    │        │   click 🚩 button   │
+│                                  ▼        ▼                     │
+│                          ┌─────────┐ ┌──────────┐              │
+│                          │Prompt 4 │ │ Prompt 5  │              │
+│                          │Popup    │ │ Panel     │              │
+│                          │(overlay)│ │ (slide-in)│              │
+│                          └────┬────┘ └─────┬─────┘              │
+│                  "Ask AI"     │  click card │                   │
+│                               ▼             ▼                   │
+│                         ┌──────────────┐   highlights           │
+│                         │  Prompt 2     │   pin on map          │
+│                         │  (new query)  │   + opens popup       │
+│                         └──────────────┘                        │
+│                                                                 │
+│  MOBILE:                                                        │
+│  ┌──────────┐  tab switch  ┌──────────┐                        │
+│  │ Prompt 6  │←───────────→│ Prompt 7  │                        │
+│  │ Mobile    │             │ Mobile    │                        │
+│  │ Chat Tab  │             │ Map Tab   │                        │
+│  └──────────┘              └──────────┘                        │
+│                                                                 │
+│  BACKEND CONNECTIONS:                                           │
+│  All pages share: WebSocket ws://localhost:3000/ws              │
+│  Prompt 1:  sends { type: "query" } on submit                  │
+│  Prompt 2:  receives reasoning → tool_call → tool_result →     │
+│             response → map_render                              │
+│  Prompt 3:  receives accountability_flags                      │
+│  Prompt 4:  reads from flags[i] data                           │
+│  Prompt 5:  reads from full flags[] array                      │
+│  Prompt 6-7: same as Prompt 1-3 (mobile layout)               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## WebSocket Message ↔ UI Element Mapping
+
+| Backend Message | Shows Up In | UI Element |
+|----------------|-------------|------------|
+| `{ type: "reasoning", text }` | Prompt 2 chat | Italic cyan thinking text |
+| `{ type: "tool_call", tool, args }` | Prompt 2 chat | 🛠️ indigo pill badge |
+| `{ type: "tool_result", tool, result }` | Prompt 2 chat | → green result text |
+| `{ type: "response", text }` | Prompt 2 chat | White text response block |
+| `{ type: "map_render", geojson, style }` | Prompt 2/3 map | Markers, circles, polygons |
+| `{ type: "accountability_flags", flags }` | Prompt 3 map | Colored flag pins |
+| Same flags data | Prompt 4 popup | Individual flag details |
+| Same flags data | Prompt 5 panel | Ranked list of all flags |
+| `{ type: "error", message }` | Any prompt chat | Red error banner in chat |
+
+---
+
+*Run prompts 1→7 in order. Each prompt references the previous ones for visual consistency.*

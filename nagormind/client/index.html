@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NagorMind — AI Urban Advisor for Dhaka</title>
+  <meta name="description" content="AI-powered urban planning advisor for Dhaka. Analyze infrastructure, healthcare access, flood risk, and government accountability.">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- App Styles -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Left Panel: Chat -->
+    <aside id="chat-panel">
+      <!-- Top Bar -->
+      <header id="top-bar">
+        <div class="logo">
+          <svg class="logo-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.5 4.5-3 5.5V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.5C6.5 13.5 5 11.5 5 9a7 7 0 0 1 7-7z"/>
+            <path d="M9 21h6M10 17v4M14 17v4"/>
+          </svg>
+          <span class="logo-text">NagorMind</span>
+          <span class="version-badge">v2</span>
+        </div>
+        <button id="settings-btn" class="icon-btn" aria-label="Settings">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+          </svg>
+        </button>
+      </header>
+
+      <!-- Suggested Chips -->
+      <div id="chips-row">
+        <button class="chip chip-accountability" data-query="Run infrastructure delivery gap analysis for all public projects in Mirpur from 2020-2024">
+          🚩 Accountability — Mirpur
+        </button>
+        <button class="chip" data-query="Find hospitals and clinics within 3km of Mirpur 10">
+          🏥 Healthcare gaps
+        </button>
+        <button class="chip" data-query="Assess flood risk in Mohammadpur">
+          🌊 Flood risk
+        </button>
+        <button class="chip" data-query="Compare healthcare access between Mirpur and Dhanmondi">
+          📊 Compare areas
+        </button>
+      </div>
+
+      <!-- Chat Messages -->
+      <div id="chat-messages">
+        <!-- Welcome State -->
+        <div id="welcome-state">
+          <div class="welcome-icon">🧠</div>
+          <h1>Welcome to NagorMind</h1>
+          <p class="welcome-subtitle">AI-powered urban planning advisor for Dhaka</p>
+          <div class="action-cards">
+            <button class="action-card" data-query="Show healthcare facilities near Mirpur 10">
+              <span class="action-icon">🏥</span>
+              <span class="action-title">Healthcare Access</span>
+              <span class="action-desc">Find hospitals, clinics & coverage gaps</span>
+            </button>
+            <button class="action-card" data-query="Assess flood risk in Mohammadpur">
+              <span class="action-icon">🌊</span>
+              <span class="action-title">Flood Risk Analysis</span>
+              <span class="action-desc">Assess drainage & vulnerability</span>
+            </button>
+            <button class="action-card" data-query="Compare healthcare between Mirpur and Dhanmondi">
+              <span class="action-icon">📊</span>
+              <span class="action-title">Compare Areas</span>
+              <span class="action-desc">Side-by-side area analysis</span>
+            </button>
+            <button class="action-card card-accountability" data-query="Check infrastructure delivery gaps in Mirpur">
+              <span class="action-icon">🚩</span>
+              <span class="action-title">Accountability</span>
+              <span class="action-desc">Cross-reference spending vs. reality</span>
+            </button>
+          </div>
+          <p class="powered-by">Powered by Gemini 2.5 Flash · 13 specialized urban analysis tools</p>
+        </div>
+      </div>
+
+      <!-- Input Bar -->
+      <div id="input-bar">
+        <input type="text" id="query-input" placeholder="Ask about any area in Dhaka..." autocomplete="off">
+        <button id="send-btn" aria-label="Send">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+            <path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"/>
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Divider -->
+    <div id="panel-divider"></div>
+
+    <!-- Right Panel: Map -->
+    <main id="map-panel">
+      <div id="map"></div>
+      
+      <!-- Map Controls -->
+      <div id="map-controls">
+        <button class="map-btn" id="zoom-in-btn" aria-label="Zoom in">+</button>
+        <button class="map-btn" id="zoom-out-btn" aria-label="Zoom out">−</button>
+        <button class="map-btn" id="layers-btn" aria-label="Toggle layers">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Legend -->
+      <div id="map-legend" class="hidden">
+        <h4>Infrastructure Delivery Gap</h4>
+        <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>🚩 Very High (&gt;60%)</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#fb923c"></span>🔴 High (40-60%)</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#facc15"></span>⚠️ Moderate (20-40%)</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#4ade80"></span>✅ Low (&lt;20%)</div>
+      </div>
+
+      <!-- Accountability Flags Button -->
+      <button id="flags-btn" class="hidden">
+        🚩 <span id="flags-count">0</span> Flags Found
+      </button>
+    </main>
+  </div>
+
+  <script src="src/app.js"></script>
+</body>
+</html>
