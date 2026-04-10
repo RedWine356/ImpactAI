@@ -5,91 +5,75 @@ import { Toaster } from 'sonner';
 import { FlagPopup } from './FlagPopup';
 import { AccountabilityPanel } from './AccountabilityPanel';
 import type { FlagData } from './FlagPopup';
+import { useNagorMind, type AccountabilityFlag } from '../NagorMindContext';
 
-interface Flag {
+interface FlagState {
   id: string;
   lat: number;
   lon: number;
-  icon: string;
-  type: 'very-high' | 'high' | 'low';
-  label: string;
+  data: FlagData;
   color: string;
   glowColor: string;
+  icon: string;
   size: number;
-  data: FlagData;
+  label: string;
 }
 
-const flags: Flag[] = [
-  {
-    id: 'f1', lat: 23.807, lon: 90.368, icon: '🚩', type: 'very-high',
-    label: 'Drainage Phase 2 · 67%',
-    color: '#ef4444', glowColor: 'rgba(239,68,68,0.4)', size: 16,
-    data: { name: 'Mirpur Drainage Phase 2', budget: 'BDT 4.5 Crore', budgetYear: '2022', agency: 'DNCC', expected: '~18 drain segments', found: '6 segments', gap: 67, thana: 'Mirpur', sourceUrl: 'https://imed.gov.bd' },
-  },
-  {
-    id: 'f2', lat: 23.815, lon: 90.375, icon: '🚩', type: 'very-high',
-    label: 'Pallabi Road · 72%',
-    color: '#ef4444', glowColor: 'rgba(239,68,68,0.4)', size: 16,
-    data: { name: 'Pallabi Road Widening', budget: 'BDT 3.2 Crore', budgetYear: '2021', agency: 'DSCC', expected: '~12 road segments', found: '3 segments', gap: 72, thana: 'Pallabi', sourceUrl: 'https://imed.gov.bd' },
-  },
-  {
-    id: 'f3', lat: 23.800, lon: 90.362, icon: '⚠️', type: 'high',
-    label: 'Health Clinic · 45%',
-    color: '#fb923c', glowColor: 'rgba(251,146,60,0.3)', size: 14,
-    data: { name: 'Mirpur-10 Health Clinic', budget: 'BDT 2.1 Crore', budgetYear: '2022', agency: 'DGHS', expected: '1 clinic building', found: 'Partial construction', gap: 45, thana: 'Mirpur-10', sourceUrl: 'https://imed.gov.bd' },
-  },
-  {
-    id: 'f4', lat: 23.812, lon: 90.382, icon: '✅', type: 'low',
-    label: 'School Extension · 12%',
-    color: '#4ade80', glowColor: 'rgba(74,222,128,0.3)', size: 12,
-    data: { name: 'Kazipara Primary School Extension', budget: 'BDT 1.8 Crore', budgetYear: '2023', agency: 'DPE', expected: '3 classrooms', found: '3 classrooms', gap: 12, thana: 'Kazipara', sourceUrl: 'https://imed.gov.bd' },
-  },
-  {
-    id: 'f5', lat: 23.804, lon: 90.374, icon: '✅', type: 'low',
-    label: 'WASA Pipeline · 8%',
-    color: '#4ade80', glowColor: 'rgba(74,222,128,0.3)', size: 12,
-    data: { name: 'Mirpur WASA Pipeline', budget: 'BDT 0.8 Crore', budgetYear: '2023', agency: 'DWASA', expected: '4 pipeline segments', found: '4 pipeline segments', gap: 8, thana: 'Mirpur', sourceUrl: 'https://imed.gov.bd' },
-  },
-];
+function flagFromServer(f: AccountabilityFlag): FlagState {
+  return {
+    id: f.id,
+    lat: f.lat,
+    lon: f.lon,
+    color: f.gap_color || '#ef4444',
+    glowColor: `${f.gap_color || '#ef4444'}66`,
+    icon: f.gap_icon || '🚩',
+    size: f.gap_percent >= 60 ? 16 : f.gap_percent >= 40 ? 14 : 12,
+    label: `${f.project_name} · ${f.gap_percent}%`,
+    data: {
+      name: f.project_name,
+      budget: `BDT ${(f.budget_bdt / 10_000_000).toFixed(1)} Crore`,
+      budgetYear: String(f.year),
+      agency: f.agency,
+      expected: `~${f.expected_count} units`,
+      found: `${f.osm_count} found on OSM`,
+      gap: f.gap_percent,
+      thana: '',
+      sourceUrl: f.source_url,
+    },
+  };
+}
 
-// Drain segments as polyline coordinates
-const drainSegments: [number, number][][] = [
-  [[23.810, 90.365], [23.808, 90.368]],
-  [[23.808, 90.368], [23.806, 90.370]],
-  [[23.806, 90.370], [23.804, 90.368]],
-  [[23.809, 90.362], [23.808, 90.368]],
-  [[23.811, 90.372], [23.808, 90.368]],
-  [[23.804, 90.368], [23.802, 90.372]],
-  [[23.809, 90.358], [23.809, 90.362]],
-  [[23.802, 90.372], [23.800, 90.375]],
-];
+const DHAKA_CENTER: [number, number] = [23.807, 90.368];
 
 export function FlagMapPanel() {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [selectedFlag, setSelectedFlag] = useState<string | null>(null);
-  const [showAccountabilityPanel, setShowAccountabilityPanel] = useState(false);
+  const markersRef = useRef<Map<string, L.Marker>>(new Map());
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showPanel, setShowPanel] = useState(false);
   const [popupPosition, setPopupPosition] = useState<{ x: number; y: number } | null>(null);
 
-  const selected = flags.find((f) => f.id === selectedFlag);
+  const { accountabilityFlags } = useNagorMind();
+  const flags = accountabilityFlags.map(flagFromServer);
+  const selected = flags.find((f) => f.id === selectedId);
+  const highFlags = flags.filter((f) => f.data.gap >= 40);
 
+  // Init map
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
     const map = L.map(containerRef.current, {
-      center: [23.807, 90.368],
+      center: DHAKA_CENTER,
       zoom: 14,
       zoomControl: false,
       attributionControl: false,
     });
 
-    // Dark basemap
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
     }).addTo(map);
 
-    // 2km dashed radius
-    L.circle([23.807, 90.368], {
+    L.circle(DHAKA_CENTER, {
       radius: 2000,
       color: '#ffffff',
       weight: 1.5,
@@ -98,17 +82,36 @@ export function FlagMapPanel() {
       fill: false,
     }).addTo(map);
 
-    // Drain segment polylines
-    drainSegments.forEach((coords) => {
-      L.polyline(coords, {
-        color: '#ffffff',
-        weight: 2,
-        opacity: 0.2,
-      }).addTo(map);
-    });
+    mapRef.current = map;
 
-    // Flag pin markers
-    flags.forEach((flag) => {
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(containerRef.current);
+
+    return () => {
+      observer.disconnect();
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  // Sync flags to map markers
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+
+    // Remove stale markers
+    const currentIds = new Set(flags.map((f) => f.id));
+    for (const [id, marker] of markersRef.current) {
+      if (!currentIds.has(id)) {
+        marker.remove();
+        markersRef.current.delete(id);
+      }
+    }
+
+    // Add new markers
+    for (const flag of flags) {
+      if (markersRef.current.has(flag.id)) continue;
+
       const icon = L.divIcon({
         className: 'custom-marker',
         html: `<div style="position:relative">
@@ -117,8 +120,8 @@ export function FlagMapPanel() {
             margin-bottom:6px;white-space:nowrap;padding:3px 8px;border-radius:999px;
             font-size:11px;color:#fff;font-weight:500;font-family:Inter,sans-serif;
             background:rgba(0,0,0,0.85);border:1px solid rgba(255,255,255,0.08);
-            pointer-events:none;
-          ">${flag.label}</div>
+            pointer-events:none;max-width:200px;overflow:hidden;text-overflow:ellipsis;
+          ">${flag.data.name.slice(0, 30)}${flag.data.name.length > 30 ? '…' : ''} · ${flag.data.gap}%</div>
           <div style="
             width:${flag.size + 8}px;height:${flag.size + 8}px;border-radius:50%;
             background:${flag.color};display:flex;align-items:center;justify-content:center;
@@ -134,35 +137,33 @@ export function FlagMapPanel() {
 
       const marker = L.marker([flag.lat, flag.lon], { icon }).addTo(map);
       marker.on('click', () => {
-        const point = map.latLngToContainerPoint([flag.lat, flag.lon]);
-        setPopupPosition({ x: point.x, y: point.y });
-        setSelectedFlag(flag.id);
+        if (containerRef.current) {
+          const point = map.latLngToContainerPoint([flag.lat, flag.lon]);
+          setPopupPosition({ x: point.x, y: point.y });
+        }
+        setSelectedId(flag.id);
       });
-    });
+      markersRef.current.set(flag.id, marker);
+    }
 
-    mapRef.current = map;
-
-    const observer = new ResizeObserver(() => map.invalidateSize());
-    observer.observe(containerRef.current);
-
-    return () => {
-      observer.disconnect();
-      map.remove();
-      mapRef.current = null;
-    };
-  }, []);
+    // Fit to flags if any
+    if (flags.length > 0) {
+      const group = L.featureGroup(Array.from(markersRef.current.values()));
+      map.fitBounds(group.getBounds().pad(0.3));
+    }
+  }, [accountabilityFlags]);
 
   return (
     <div className="relative w-full h-full overflow-hidden" style={{ background: '#000000' }}>
       <div ref={containerRef} className="absolute inset-0" />
 
-      {/* Flag Popup overlay */}
+      {/* Flag popup overlay */}
       {selected && popupPosition && (
         <>
           <div
             className="absolute inset-0 cursor-pointer"
             style={{ background: 'rgba(0,0,0,0.3)', zIndex: 1100 }}
-            onClick={() => setSelectedFlag(null)}
+            onClick={() => setSelectedId(null)}
           />
           <div
             className="absolute"
@@ -172,10 +173,7 @@ export function FlagMapPanel() {
               zIndex: 1200,
             }}
           >
-            <FlagPopup
-              data={selected.data}
-              onClose={() => setSelectedFlag(null)}
-            />
+            <FlagPopup data={selected.data} onClose={() => setSelectedId(null)} />
           </div>
         </>
       )}
@@ -197,12 +195,8 @@ export function FlagMapPanel() {
               border: '1px solid rgba(255,255,255,0.08)',
               color: '#B0B0B0',
             }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.08)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.background = 'rgba(10,10,10,0.85)';
-            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.08)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(10,10,10,0.85)'; }}
           >
             {btn.label}
           </button>
@@ -212,12 +206,7 @@ export function FlagMapPanel() {
       {/* Legend */}
       <div
         className="absolute bottom-4 right-4 p-3 rounded-xl z-[1000]"
-        style={{
-          width: 200,
-          background: 'rgba(10,10,10,0.9)',
-          backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(255,255,255,0.08)',
-        }}
+        style={{ width: 200, background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.08)' }}
       >
         <div className="text-[12px] mb-2" style={{ color: '#FFFFFF', fontWeight: 600 }}>
           Infrastructure Delivery Gap
@@ -235,25 +224,40 @@ export function FlagMapPanel() {
         ))}
       </div>
 
-      {/* Accountability Flags button */}
-      <button
-        onClick={() => setShowAccountabilityPanel(!showAccountabilityPanel)}
-        className="absolute bottom-4 left-4 z-[1000] flex items-center gap-2 px-4 py-2.5 rounded-xl cursor-pointer transition-all hover:scale-[1.03]"
-        style={{
-          background: 'rgba(239,68,68,0.1)',
-          border: '1px solid rgba(239,68,68,0.3)',
-          backdropFilter: 'blur(12px)',
-          animation: 'flagButtonPulse 3s ease-in-out infinite',
-        }}
-      >
-        <span className="text-[13px] text-white" style={{ fontWeight: 700 }}>🚩 3 Flags Found</span>
-        <span
-          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] text-white"
-          style={{ background: '#ef4444', fontWeight: 700 }}
+      {/* Flags button — only shown when flags exist */}
+      {flags.length > 0 && (
+        <button
+          onClick={() => setShowPanel(!showPanel)}
+          className="absolute bottom-4 left-4 z-[1000] flex items-center gap-2 px-4 py-2.5 rounded-xl cursor-pointer transition-all hover:scale-[1.03]"
+          style={{
+            background: 'rgba(239,68,68,0.1)',
+            border: '1px solid rgba(239,68,68,0.3)',
+            backdropFilter: 'blur(12px)',
+            animation: 'flagButtonPulse 3s ease-in-out infinite',
+          }}
         >
-          3
-        </span>
-      </button>
+          <span className="text-[13px] text-white" style={{ fontWeight: 700 }}>
+            🚩 {highFlags.length} Flag{highFlags.length !== 1 ? 's' : ''} Found
+          </span>
+          <span
+            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] text-white"
+            style={{ background: '#ef4444', fontWeight: 700 }}
+          >
+            {highFlags.length}
+          </span>
+        </button>
+      )}
+
+      {/* Empty state */}
+      {flags.length === 0 && (
+        <div
+          className="absolute inset-0 flex items-center justify-center z-[500] pointer-events-none"
+        >
+          <p className="text-[13px]" style={{ color: '#333' }}>
+            Accountability flags will appear here after running a delivery gap analysis
+          </p>
+        </div>
+      )}
 
       <style>{`
         .custom-marker { background: none !important; border: none !important; }
@@ -263,19 +267,19 @@ export function FlagMapPanel() {
         }
       `}</style>
 
-      {/* Accountability Panel */}
-      {showAccountabilityPanel && (
+      {/* Accountability panel */}
+      {showPanel && (
         <AccountabilityPanel
           projects={flags.map((f) => ({ id: f.id, data: f.data }))}
-          onClose={() => setShowAccountabilityPanel(false)}
+          onClose={() => setShowPanel(false)}
           onSelectProject={(id) => {
-            setShowAccountabilityPanel(false);
+            setShowPanel(false);
             const flag = flags.find((f) => f.id === id);
             if (flag && mapRef.current && containerRef.current) {
               const point = mapRef.current.latLngToContainerPoint([flag.lat, flag.lon]);
               setPopupPosition({ x: point.x, y: point.y });
             }
-            setSelectedFlag(id);
+            setSelectedId(id);
           }}
         />
       )}

@@ -7,11 +7,11 @@ import { DATA } from '../index.js';
 // Rate limiter for Nominatim (1 req/sec)
 let lastNominatimCall = 0;
 const OVERPASS_ENDPOINTS = [
-  'https://overpass-api.de/api/interpreter',
+  'https://lz4.overpass-api.de/api/interpreter',   // fastest mirror
   'https://overpass.kumi.systems/api/interpreter',
-  'https://lz4.overpass-api.de/api/interpreter',
+  'https://overpass-api.de/api/interpreter',        // main (often busy)
 ];
-const OVERPASS_TIMEOUT_MS = 30000;
+const OVERPASS_TIMEOUT_MS = 45000;
 
 async function nominatimThrottle() {
   const now = Date.now();
@@ -24,40 +24,29 @@ async function queryOverpass(query) {
   let lastError = null;
 
   for (const endpoint of OVERPASS_ENDPOINTS) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), OVERPASS_TIMEOUT_MS);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), OVERPASS_TIMEOUT_MS);
 
-      try {
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: `data=${encodeURIComponent(query)}`,
-          signal: controller.signal,
-        });
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `data=${encodeURIComponent(query)}`,
+        signal: controller.signal,
+      });
 
-        if (!res.ok) {
-          const err = new Error(`Overpass API error: ${res.status}`);
-          err.status = res.status;
-          throw err;
-        }
-
-        return await res.json();
-      } catch (err) {
-        lastError = err;
-        const status = err?.status;
-        const isRetryable = err?.name === 'AbortError' || status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
-
-        if (!isRetryable) {
-          break;
-        }
-
-        if (attempt < 2) {
-          await new Promise((resolve) => setTimeout(resolve, 600 * attempt));
-        }
-      } finally {
-        clearTimeout(timeout);
+      if (!res.ok) {
+        const err = new Error(`Overpass API error: ${res.status}`);
+        err.status = res.status;
+        throw err;
       }
+
+      return await res.json();
+    } catch (err) {
+      lastError = err;
+      // Try next endpoint
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
@@ -116,7 +105,7 @@ export async function query_osm_amenities({ lat, lon, radius_m, types }) {
   if (cached) return cached;
 
   const typeFilter = types.join('|');
-  const query = `[out:json][timeout:25];
+  const query = `[out:json][timeout:40];
 (
   node["amenity"~"${typeFilter}"](around:${radius_m},${lat},${lon});
   way["amenity"~"${typeFilter}"](around:${radius_m},${lat},${lon});
@@ -143,10 +132,23 @@ out center body;`;
 
   const areaKm2 = (Math.PI * (radius_m / 1000) ** 2);
 
+  // Build GeoJSON for render_on_map (full data)
+  const geojson = {
+    type: 'FeatureCollection',
+    features: items
+      .filter((i) => i.lat && i.lon)
+      .map((i) => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [i.lon, i.lat] },
+        properties: { name: i.name, type: i.type, name_bn: i.name_bn },
+      })),
+  };
+
   const result = {
     total_count: items.length,
     by_type: byType,
-    items,
+    geojson,                                    // full GeoJSON for render_on_map
+    sample: items.slice(0, 3).map((i) => ({ name: i.name, type: i.type, lat: i.lat, lon: i.lon })),
     query_area_km2: Math.round(areaKm2 * 100) / 100,
     source: 'Overpass API (OpenStreetMap)',
   };
@@ -186,7 +188,7 @@ export async function query_osm_infrastructure({ lat, lon, radius_m, types }) {
     }
   }
 
-  const query = `[out:json][timeout:25];
+  const query = `[out:json][timeout:40];
 (
   ${clauses.join('\n  ')}
 );
@@ -224,11 +226,24 @@ out center body;`;
     byType[i.type] = (byType[i.type] || 0) + 1;
   });
 
+  // Build GeoJSON for render_on_map
+  const geojson = {
+    type: 'FeatureCollection',
+    features: items
+      .filter((i) => i.lat && i.lon)
+      .map((i) => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [i.lon, i.lat] },
+        properties: { name: i.name, type: i.type },
+      })),
+  };
+
   const result = {
     total_count: items.length,
     by_type: byType,
     total_length_km: Math.round(totalLengthKm * 100) / 100,
-    items,
+    geojson,                                    // full GeoJSON for render_on_map
+    sample: items.slice(0, 3).map((i) => ({ name: i.name, type: i.type, lat: i.lat, lon: i.lon })),
     source: 'Overpass API (OpenStreetMap)',
   };
 

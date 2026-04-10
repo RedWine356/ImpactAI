@@ -113,7 +113,7 @@ export async function compute_service_coverage({
     service_count: amenities.total_count,
     population_estimate: populationEstimate,
     coverage_percent: coveragePercent,
-    gap_zones: gapZones,
+    gap_zones_geojson: gapZones,               // GeoJSON for render_on_map
     recommended_new_locations: recommended,
     benchmark,
     meets_benchmark: coveragePercent >= 80,
@@ -190,6 +190,16 @@ export async function estimate_flood_risk({ lat, lon, radius_m }) {
   if (recentRain > 50) recommendations.push('Heavy recent rainfall — monitor for waterlogging');
   if (vulnerableSpots.length > 0) recommendations.push(`${vulnerableSpots.length} road segments lack nearby drainage`);
 
+  // Build GeoJSON of vulnerable spots for map rendering
+  const vulnerableGeojson = {
+    type: 'FeatureCollection',
+    features: vulnerableSpots.map((s) => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [s.lon, s.lat] },
+      properties: { reason: s.reason },
+    })),
+  };
+
   return {
     flood_risk_score: totalScore,
     risk_label: riskLabel,
@@ -200,7 +210,8 @@ export async function estimate_flood_risk({ lat, lon, radius_m }) {
       waterway_proximity_m: Math.round(minWaterwayDist),
       road_density_per_km2: Math.round(roadDensity * 100) / 100,
     },
-    vulnerable_spots: vulnerableSpots,
+    vulnerable_spots_count: vulnerableSpots.length,
+    vulnerable_geojson: vulnerableGeojson,
     recommendations,
     source: 'Composite analysis (OSM + OpenWeatherMap)',
   };

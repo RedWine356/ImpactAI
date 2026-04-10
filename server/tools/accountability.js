@@ -52,19 +52,34 @@ export async function check_infrastructure_delivery({
   // Step 1: Look up public projects
   const publicProjects = lookupPublicProjects(lat, lon, radius_m, project_type);
 
-  // Step 2: Count actual infrastructure via OSM
+  // Step 2: Count actual infrastructure via OSM (graceful fallback on error)
   let osmCount = 0;
+  let osmNote = null;
+  let osmGeojson = null;
 
-  if (['drain', 'road', 'bridge'].includes(project_type)) {
-    const osmTypes = PROJECT_TO_OSM[project_type] || [project_type];
-    const osmData = await query_osm_infrastructure({ lat, lon, radius_m, types: osmTypes });
-    osmCount = osmData.total_count;
-  } else {
-    // For amenities (clinic, school), query OSM amenities
-    const { query_osm_amenities } = await import('./spatial.js');
-    const amenityType = project_type === 'clinic' ? ['hospital', 'clinic'] : [project_type];
-    const amenityData = await query_osm_amenities({ lat, lon, radius_m, types: amenityType });
-    osmCount = amenityData.total_count;
+  try {
+    if (['drain', 'road', 'bridge'].includes(project_type)) {
+      const osmTypes = PROJECT_TO_OSM[project_type] || [project_type];
+      const osmData = await query_osm_infrastructure({ lat, lon, radius_m, types: osmTypes });
+      if (osmData.error) {
+        osmNote = `OSM query failed: ${osmData.error}. Gap calculated without physical evidence.`;
+      } else {
+        osmCount = osmData.total_count;
+        osmGeojson = osmData.geojson || null;
+      }
+    } else {
+      const { query_osm_amenities } = await import('./spatial.js');
+      const amenityType = project_type === 'clinic' ? ['hospital', 'clinic'] : [project_type];
+      const amenityData = await query_osm_amenities({ lat, lon, radius_m, types: amenityType });
+      if (amenityData.error) {
+        osmNote = `OSM query failed: ${amenityData.error}. Gap calculated without physical evidence.`;
+      } else {
+        osmCount = amenityData.total_count;
+        osmGeojson = amenityData.geojson || null;
+      }
+    }
+  } catch (err) {
+    osmNote = `OSM unavailable: ${err.message}. Gap calculated from procurement records only.`;
   }
 
   // Step 3: Compute expected count
@@ -106,6 +121,8 @@ export async function check_infrastructure_delivery({
     })),
     total_announced_budget_bdt: totalBudget,
     osm_evidence_count: osmCount,
+    osm_note: osmNote,
+    osm_geojson: osmGeojson,
     expected_count_from_budget: expectedCount,
     delivery_gap_percent: gapPercent,
     gap_label: gapLabel(gapPercent),

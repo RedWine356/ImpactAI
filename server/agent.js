@@ -201,6 +201,50 @@ function emitAccountabilityFlags(toolArgs, toolResult, send) {
   });
 }
 
+const OSM_STYLE_MAP = {
+  query_osm_amenities: {
+    hospital: { type: 'marker', color: '#ffffff', icon: '🏥' },
+    clinic:   { type: 'marker', color: '#a3e635', icon: '🏥' },
+    school:   { type: 'marker', color: '#60a5fa', icon: '🏫' },
+    pharmacy: { type: 'marker', color: '#f472b6', icon: '💊' },
+    default:  { type: 'marker', color: '#ffffff', icon: '📍' },
+  },
+  query_osm_infrastructure: {
+    drain:    { type: 'polyline', color: '#00d4ff', weight: 2, opacity: 0.8 },
+    road:     { type: 'polyline', color: '#94a3b8', weight: 1, opacity: 0.6 },
+    bridge:   { type: 'marker',  color: '#fb923c', icon: '🌉' },
+    waterway: { type: 'polyline', color: '#38bdf8', weight: 2, opacity: 0.7 },
+    culvert:  { type: 'marker',  color: '#a78bfa', icon: '🔩' },
+    default:  { type: 'marker',  color: '#94a3b8', icon: '🔧' },
+  },
+};
+
+function autoRenderOsmResult(toolName, toolArgs, toolResult, send) {
+  if (toolResult?.error || !toolResult?.geojson?.features?.length) return;
+  if (toolName !== 'query_osm_amenities' && toolName !== 'query_osm_infrastructure') return;
+
+  const styleMap = OSM_STYLE_MAP[toolName];
+  const types = toolArgs?.types || [];
+  const primaryType = types[0] || 'default';
+  const style = styleMap[primaryType] || styleMap.default;
+
+  // Build a friendly label
+  const typeLabel = types.join(', ');
+  const label = typeLabel
+    ? typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1)
+    : (toolName === 'query_osm_amenities' ? 'Amenities' : 'Infrastructure');
+
+  send({
+    type: 'map_render',
+    action: 'add_layer',
+    layer_id: `auto_${toolName}_${Date.now()}`,
+    geojson: toolResult.geojson,
+    style,
+    label: `${label} (${toolResult.total_count})`,
+    fit_bounds: true,
+  });
+}
+
 async function createGroqCompletion({ apiKey, model, messages }) {
   const response = await fetch(GROQ_API_URL, {
     method: 'POST',
@@ -582,14 +626,38 @@ export async function handleQuery(userText, session, send) {
 
       if (toolName === 'check_infrastructure_delivery') {
         emitAccountabilityFlags(toolArgs, toolResult, send);
+        // Auto-render the OSM infrastructure if it was fetched inside the tool
+        if (toolResult?.osm_geojson?.features?.length) {
+          send({
+            type: 'map_render',
+            action: 'add_layer',
+            layer_id: `acct_osm_${Date.now()}`,
+            geojson: toolResult.osm_geojson,
+            style: { type: 'polyline', color: '#00d4ff', weight: 2, opacity: 0.7 },
+            label: `OSM ${toolResult.project_type} (${toolResult.osm_evidence_count} found)`,
+            fit_bounds: true,
+          });
+        }
       }
 
+      // Auto-render OSM results on the map so the LLM doesn't need to
+      // construct GeoJSON manually (which produces only 1 feature)
+      autoRenderOsmResult(toolName, toolArgs, toolResult, send);
+
       toolResponses.push({ name: toolName, response: toolResult });
+
+      // Strip large geojson blobs before sending to LLM to avoid token limit
+      const toolResultForLLM = { ...toolResult };
+      delete toolResultForLLM.geojson;
+      delete toolResultForLLM.gap_zones_geojson;
+      delete toolResultForLLM.vulnerable_geojson;
+      delete toolResultForLLM.osm_geojson;
+
       messages.push({
         role: 'tool',
         tool_call_id: tc.id,
         name: toolName,
-        content: JSON.stringify(toolResult),
+        content: JSON.stringify(toolResultForLLM),
       });
     }
 
