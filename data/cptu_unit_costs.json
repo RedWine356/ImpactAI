@@ -1,0 +1,82 @@
+[
+  {
+    "type": "drain",
+    "description": "RCC box drain (500m segment, 1.2m x 1.0m)",
+    "unit": "per 500m segment",
+    "cost_bdt": 2500000,
+    "cost_year": 2023,
+    "source": "LGED Rate Schedule 2023-24"
+  },
+  {
+    "type": "drain",
+    "description": "Open drain with masonry wall (500m)",
+    "unit": "per 500m segment",
+    "cost_bdt": 1500000,
+    "cost_year": 2023,
+    "source": "LGED Rate Schedule 2023-24"
+  },
+  {
+    "type": "road",
+    "description": "Bituminous road resurfacing (500m, 6m wide)",
+    "unit": "per 500m segment",
+    "cost_bdt": 5000000,
+    "cost_year": 2023,
+    "source": "PWD Rate Schedule 2023-24"
+  },
+  {
+    "type": "road",
+    "description": "Road widening with drainage (500m)",
+    "unit": "per 500m segment",
+    "cost_bdt": 12000000,
+    "cost_year": 2023,
+    "source": "PWD Rate Schedule 2023-24"
+  },
+  {
+    "type": "clinic",
+    "description": "Community clinic construction (standard design)",
+    "unit": "per facility",
+    "cost_bdt": 8000000,
+    "cost_year": 2023,
+    "source": "DGHS Standard Design Package"
+  },
+  {
+    "type": "clinic",
+    "description": "Upazila Health Complex upgrade",
+    "unit": "per facility",
+    "cost_bdt": 25000000,
+    "cost_year": 2023,
+    "source": "DGHS Standard Design Package"
+  },
+  {
+    "type": "school",
+    "description": "Primary school building (6-room standard)",
+    "unit": "per facility",
+    "cost_bdt": 20000000,
+    "cost_year": 2023,
+    "source": "DPE Standard Cost 2023"
+  },
+  {
+    "type": "bridge",
+    "description": "Pedestrian overpass bridge",
+    "unit": "per structure",
+    "cost_bdt": 10000000,
+    "cost_year": 2023,
+    "source": "RHD Rate Schedule 2023-24"
+  },
+  {
+    "type": "bridge",
+    "description": "Small vehicle bridge (RCC, 50m span)",
+    "unit": "per structure",
+    "cost_bdt": 80000000,
+    "cost_year": 2023,
+    "source": "RHD Rate Schedule 2023-24"
+  },
+  {
+    "type": "culvert",
+    "description": "RCC box culvert (single cell)",
+    "unit": "per structure",
+    "cost_bdt": 3000000,
+    "cost_year": 2023,
+    "source": "LGED Rate Schedule 2023-24"
+  }
+]

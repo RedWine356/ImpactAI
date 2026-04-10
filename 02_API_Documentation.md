@@ -13,7 +13,7 @@
 2. [WebSocket Protocol](#2-websocket-protocol)
 3. [REST Endpoints](#3-rest-endpoints)
 4. [Tool Definitions (13 Tools)](#4-tool-definitions)
-5. [Gemini Agent Integration](#5-gemini-agent-integration)
+5. [LLM Agent Integration (Groq)](#5-llm-agent-integration-groq)
 6. [Data Models](#6-data-models)
 7. [Error Handling](#7-error-handling)
 8. [Rate Limiting & Caching](#8-rate-limiting--caching)
@@ -223,7 +223,7 @@ Health check endpoint.
   "version": "2.0.0",
   "uptime_seconds": 3456,
   "services": {
-    "gemini": "connected",
+    "groq": "connected",
     "overpass": "available",
     "waqi": "available",
     "openweathermap": "available"
@@ -324,7 +324,7 @@ Returns pre-fetched government project data filtered by thana and type.
 
 ## 4. Tool Definitions (13 Tools)
 
-Each tool is a function the Gemini agent can call. Below is the complete specification for each.
+Each tool is a function the LLM agent can call. Below is the complete specification for each.
 
 ---
 
@@ -881,33 +881,33 @@ function estimateFromBudget(budgetBDT, type) {
 
 ---
 
-## 5. Gemini Agent Integration
+## 5. LLM Agent Integration (Groq)
 
-### 5.1 Gemini API Configuration
+### 5.1 Groq API Configuration
 
 ```javascript
 // Agent configuration
 const agentConfig = {
-  model: "gemini-2.5-flash",
-  apiEndpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-  apiKey: process.env.GEMINI_API_KEY,  // Free tier
+  model: "llama-3.3-70b-versatile",
+  apiEndpoint: "https://api.groq.com/openai/v1/chat/completions",
+  apiKey: process.env.GROQ_API_KEY,  // Free tier
   generationConfig: {
-    temperature: 0.7,
-    maxOutputTokens: 4096,
-    topP: 0.95,
+    temperature: 0.4,
+    max_tokens: 2048
   }
 };
 ```
 
-### 5.2 Tool Declaration Format (for Gemini Function Calling)
+### 5.2 Tool Declaration Format (OpenAI-Compatible Function Calling)
 
 ```json
 {
-  "tools": [{
-    "function_declarations": [
-      {
+  "tools": [
+    {
+      "type": "function",
+      "function": {
         "name": "geocode",
-        "description": "Convert a place name in Dhaka to geographic coordinates (latitude, longitude). Use this when the user mentions a location by name.",
+        "description": "Convert a place name in Dhaka to geographic coordinates (latitude, longitude).",
         "parameters": {
           "type": "object",
           "properties": {
@@ -918,38 +918,20 @@ const agentConfig = {
           },
           "required": ["place_name"]
         }
-      },
-      {
-        "name": "query_osm_amenities",
-        "description": "Search for amenities (hospitals, schools, clinics, pharmacies) within a radius of a location using OpenStreetMap data.",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "lat": { "type": "number", "description": "Latitude" },
-            "lon": { "type": "number", "description": "Longitude" },
-            "radius_m": { "type": "number", "description": "Search radius in meters" },
-            "types": {
-              "type": "array",
-              "items": { "type": "string" },
-              "description": "Amenity types to search: hospital, clinic, school, pharmacy, etc."
-            }
-          },
-          "required": ["lat", "lon", "radius_m", "types"]
-        }
       }
-    ]
-  }]
+    }
+  ]
 }
 ```
 
-> **Full tool declarations** follow the same pattern for all 13 tools. See the Gemini Function Calling docs for format details.
+> **Full tool declarations** follow the same pattern for all 13 tools. The backend sends these using OpenAI-compatible tool schema.
 
 ### 5.3 Agentic Loop Logic
 
 ```
 1. Receive user query via WebSocket
 2. Build message array: [system_prompt, ...conversation_history, user_query]
-3. Call Gemini API with tool declarations
+3. Call Groq Chat Completions API with tool declarations
 4. WHILE response contains function_call:
    a. Stream reasoning text to client via WebSocket ("reasoning" message)
    b. Extract function_call name and args
@@ -957,7 +939,7 @@ const agentConfig = {
    d. Execute the tool function server-side
    e. Send "tool_result" message to client
    f. Append tool result to message array
-   g. Call Gemini API again with updated message array
+    g. Call Groq API again with updated message array
 5. Stream final text response to client ("response" messages)
 6. Send "response done" message with metadata
 ```
@@ -1029,7 +1011,7 @@ interface UnitCost {
 | `RATE_LIMIT` | WS | External API rate limit hit | Wait and retry |
 | `GEOCODE_NOT_FOUND` | WS | Place name could not be geocoded | Ask user to clarify |
 | `OVERPASS_TIMEOUT` | WS | Overpass API query timed out | Reduce radius, retry |
-| `GEMINI_ERROR` | WS | Gemini API returned an error | Retry with backoff |
+| `LLM_ERROR` | WS | LLM API returned an error | Retry with backoff |
 | `NO_DATA` | WS | No procurement records found for area | Inform user, proceed without |
 | `INVALID_INPUT` | WS | Malformed input parameters | Return validation error |
 | `SERVER_ERROR` | 500 | Internal server error | Log and alert |
@@ -1054,7 +1036,7 @@ interface UnitCost {
 
 | API | Free Limit | Strategy |
 |-----|-----------|----------|
-| Gemini 2.5 Flash | 1,500 req/day | Count requests, warn at 80% |
+| Groq (Llama models) | Tier-dependent | Retry with backoff + model fallback |
 | Nominatim | 1 req/sec | Queue with 1s delay between calls |
 | Overpass API | Fair use (~10,000/day) | Cache results for 5 minutes |
 | WAQI | 1,000 req/day | Cache AQI for 30 minutes |
@@ -1095,7 +1077,7 @@ const TTL = {
 
 ```bash
 # .env
-GEMINI_API_KEY=your_gemini_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
 WAQI_TOKEN=your_waqi_token_here
 OWM_API_KEY=your_openweathermap_key_here
 PORT=3000

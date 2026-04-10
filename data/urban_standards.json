@@ -1,0 +1,120 @@
+{
+  "healthcare_access": [
+    {
+      "authority": "WHO",
+      "standard": "1 hospital bed per 1,000 population",
+      "threshold": 1,
+      "unit": "beds per 1000 people",
+      "year": 2020,
+      "source_url": "https://www.who.int/data/gho"
+    },
+    {
+      "authority": "WHO",
+      "standard": "Primary healthcare facility within 2km walking distance",
+      "threshold": 2000,
+      "unit": "meters max distance",
+      "year": 2018,
+      "source_url": "https://www.who.int/publications"
+    },
+    {
+      "authority": "Bangladesh DGHS",
+      "standard": "1 community clinic per 6,000 population",
+      "threshold": 6000,
+      "unit": "population per clinic",
+      "year": 2022,
+      "source_url": "https://dghs.gov.bd/"
+    }
+  ],
+  "education_access": [
+    {
+      "authority": "Bangladesh DPE",
+      "standard": "1 primary school per 1,500 school-age children",
+      "threshold": 1500,
+      "unit": "children per school",
+      "year": 2021,
+      "source_url": "https://www.dpe.gov.bd/"
+    },
+    {
+      "authority": "UN-Habitat",
+      "standard": "Maximum 1.5km walking distance to primary school",
+      "threshold": 1500,
+      "unit": "meters max distance",
+      "year": 2020,
+      "source_url": "https://unhabitat.org/"
+    }
+  ],
+  "drainage": [
+    {
+      "authority": "BNBC",
+      "standard": "Continuous drainage along all major and secondary roads",
+      "threshold": 0.8,
+      "unit": "coverage ratio (drain length / road length)",
+      "year": 2020,
+      "source_url": "https://www.bnbc.gov.bd/"
+    },
+    {
+      "authority": "DNCC/DSCC",
+      "standard": "Storm drain capacity for 50mm/hour rainfall",
+      "threshold": 50,
+      "unit": "mm per hour drainage capacity",
+      "year": 2022,
+      "source_url": "https://www.dncc.gov.bd/"
+    }
+  ],
+  "air_quality": [
+    {
+      "authority": "WHO",
+      "standard": "Annual mean PM2.5 should not exceed 15 µg/m³",
+      "threshold": 15,
+      "unit": "µg/m³ annual mean",
+      "year": 2021,
+      "source_url": "https://www.who.int/news-room/fact-sheets/detail/ambient-(outdoor)-air-quality-and-health"
+    },
+    {
+      "authority": "Bangladesh DoE",
+      "standard": "24-hour PM2.5 standard: 65 µg/m³",
+      "threshold": 65,
+      "unit": "µg/m³ 24-hour mean",
+      "year": 2022,
+      "source_url": "https://doe.gov.bd/"
+    }
+  ],
+  "road_infrastructure": [
+    {
+      "authority": "UN-Habitat",
+      "standard": "30% of urban land should be allocated to streets and roads",
+      "threshold": 30,
+      "unit": "percent of urban land",
+      "year": 2020,
+      "source_url": "https://unhabitat.org/"
+    },
+    {
+      "authority": "RAJUK",
+      "standard": "Minimum 6m wide residential access road",
+      "threshold": 6,
+      "unit": "meters road width",
+      "year": 2022,
+      "source_url": "https://www.rajuk.dhaka.gov.bd/"
+    }
+  ],
+  "green_space": [
+    {
+      "authority": "WHO",
+      "standard": "Minimum 9 sq meters green space per capita",
+      "threshold": 9,
+      "unit": "sq meters per person",
+      "year": 2016,
+      "source_url": "https://www.who.int/publications"
+    }
+  ],
+  "population_density": [
+    {
+      "authority": "Reference",
+      "standard": "Dhaka average population density",
+      "threshold": 45000,
+      "unit": "persons per sq km",
+      "year": 2024,
+      "source_url": "https://www.bbs.gov.bd/"
+    }
+  ]
+}

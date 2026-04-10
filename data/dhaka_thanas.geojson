@@ -1,0 +1,105 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Mirpur", "name_bn": "মিরপুর", "zone": "DNCC", "admin_level": 9 },
+      "geometry": { "type": "Polygon", "coordinates": [[[90.345, 23.790], [90.390, 23.790], [90.390, 23.830], [90.345, 23.830], [90.345, 23.790]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Pallabi", "name_bn": "পল্লবী", "zone": "DNCC", "admin_level": 9 },
+      "geometry": { "type": "Polygon", "coordinates": [[[90.345, 23.820], [90.380, 23.820], [90.380, 23.850], [90.345, 23.850], [90.345, 23.820]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Dhanmondi", "name_bn": "ধানমন্ডি", "zone": "DSCC", "admin_level": 9 },
+      "geometry": { "type": "Polygon", "coordinates": [[[90.360, 23.735], [90.395, 23.735], [90.395, 23.760], [90.360, 23.760], [90.360, 23.735]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Gulshan", "name_bn": "গুলশান", "zone": "DNCC", "admin_level": 9 },
+      "geometry": { "type": "Polygon", "coordinates": [[[90.400, 23.780], [90.430, 23.780], [90.430, 23.810], [90.400, 23.810], [90.400, 23.780]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Banani", "name_bn": "বনানী", "zone": "DNCC", "admin_level": 9 },
+      "geometry": { "type": "Polygon", "coordinates": [[[90.395, 23.790], [90.420, 23.790], [90.420, 23.810], [90.395, 23.810], [90.395, 23.790]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Mohammadpur", "name_bn": "মোহাম্মদপুর", "zone": "DSCC", "admin_level": 9 },
+      "geometry": { "type": "Polygon", "coordinates": [[[90.340, 23.750], [90.370, 23.750], [90.370, 23.780], [90.340, 23.780], [90.340, 23.750]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Uttara", "name_bn": "উত্তরা", "zone": "DNCC", "admin_level": 9 },
+      "geometry": { "type": "Polygon", "coordinates": [[[90.380, 23.860], [90.420, 23.860], [90.420, 23.900], [90.380, 23.900], [90.380, 23.860]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Hazaribagh", "name_bn": "হাজারীবাগ", "zone": "DSCC", "admin_level": 9 },
+      "geometry": { "type": "Polygon", "coordinates": [[[90.350, 23.725], [90.375, 23.725], [90.375, 23.745], [90.350, 23.745], [90.350, 23.725]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Tejgaon", "name_bn": "তেজগাঁও", "zone": "DNCC", "admin_level": 9 },
+      "geometry": { "type": "Polygon", "coordinates": [[[90.380, 23.750], [90.410, 23.750], [90.410, 23.775], [90.380, 23.775], [90.380, 23.750]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Badda", "name_bn": "বাড্ডা", "zone": "DNCC", "admin_level": 9 },
+      "geometry": { "type": "Polygon", "coordinates": [[[90.415, 23.770], [90.445, 23.770], [90.445, 23.795], [90.415, 23.795], [90.415, 23.770]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Jatrabari", "name_bn": "যাত্রাবাড়ী", "zone": "DSCC", "admin_level": 9 },
+      "geometry": { "type": "Polygon", "coordinates": [[[90.420, 23.700], [90.450, 23.700], [90.450, 23.725], [90.420, 23.725], [90.420, 23.700]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Motijheel", "name_bn": "মতিঝিল", "zone": "DSCC", "admin_level": 9 },
+      "geometry": { "type": "Polygon", "coordinates": [[[90.405, 23.725], [90.430, 23.725], [90.430, 23.745], [90.405, 23.745], [90.405, 23.725]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Ramna", "name_bn": "রমনা", "zone": "DSCC", "admin_level": 9 },
+      "geometry": { "type": "Polygon", "coordinates": [[[90.390, 23.735], [90.415, 23.735], [90.415, 23.755], [90.390, 23.755], [90.390, 23.735]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Lalbagh", "name_bn": "লালবাগ", "zone": "DSCC", "admin_level": 9 },
+      "geometry": { "type": "Polygon", "coordinates": [[[90.380, 23.715], [90.405, 23.715], [90.405, 23.735], [90.380, 23.735], [90.380, 23.715]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Khilgaon", "name_bn": "খিলগাঁও", "zone": "DSCC", "admin_level": 9 },
+      "geometry": { "type": "Polygon", "coordinates": [[[90.425, 23.740], [90.450, 23.740], [90.450, 23.765], [90.425, 23.765], [90.425, 23.740]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Kafrul", "name_bn": "কাফরুল", "zone": "DNCC", "admin_level": 9 },
+      "geometry": { "type": "Polygon", "coordinates": [[[90.380, 23.775], [90.405, 23.775], [90.405, 23.800], [90.380, 23.800], [90.380, 23.775]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Cantonment", "name_bn": "ক্যান্টনমেন্ট", "zone": "DNCC", "admin_level": 9 },
+      "geometry": { "type": "Polygon", "coordinates": [[[90.385, 23.800], [90.415, 23.800], [90.415, 23.825], [90.385, 23.825], [90.385, 23.800]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Rampura", "name_bn": "রামপুরা", "zone": "DSCC", "admin_level": 9 },
+      "geometry": { "type": "Polygon", "coordinates": [[[90.420, 23.755], [90.445, 23.755], [90.445, 23.775], [90.420, 23.775], [90.420, 23.755]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Shahbagh", "name_bn": "শাহবাগ", "zone": "DSCC", "admin_level": 9 },
+      "geometry": { "type": "Polygon", "coordinates": [[[90.390, 23.735], [90.405, 23.735], [90.405, 23.748], [90.390, 23.748], [90.390, 23.735]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Turag", "name_bn": "তুরাগ", "zone": "DNCC", "admin_level": 9 },
+      "geometry": { "type": "Polygon", "coordinates": [[[90.340, 23.850], [90.380, 23.850], [90.380, 23.890], [90.340, 23.890], [90.340, 23.850]]] }
+    }
+  ]
+}
